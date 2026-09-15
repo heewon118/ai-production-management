@@ -1,0 +1,883 @@
+{
+  "processes": [
+    {
+      "id": "mu0wylpq-8j418u",
+      "name": "조립",
+      "parentId": null,
+      "standardST": null
+    },
+    {
+      "id": "mu0wylqr-i31nok",
+      "name": "Assy1 Sub",
+      "parentId": "mu0wylpq-8j418u",
+      "standardST": null,
+      "equipmentId": null,
+      "dailyTarget": 175
+    },
+    {
+      "id": "mu0wylrl-lljb6c",
+      "name": "Assy2 TD 조립",
+      "parentId": "mu0wylpq-8j418u",
+      "standardST": null,
+      "dailyTarget": 175,
+      "equipmentId": null
+    },
+    {
+      "id": "mu0wylsh-5pqrdo",
+      "name": "검사",
+      "parentId": null,
+      "standardST": 660
+    },
+    {
+      "id": "mu0xcsk5-xrp9lz",
+      "name": "포장",
+      "parentId": null,
+      "standardST": 660
+    },
+    {
+      "id": "mu0xil6c-lr48mq",
+      "name": "Assy3 메인 Assy1",
+      "parentId": "mu0wylpq-8j418u",
+      "standardST": null,
+      "equipmentId": null,
+      "dailyTarget": 175
+    },
+    {
+      "id": "mu0xipas-584st6",
+      "name": "Assy4 메인 Assy2",
+      "parentId": "mu0wylpq-8j418u",
+      "standardST": null,
+      "equipmentId": null,
+      "dailyTarget": 175
+    },
+    {
+      "id": "mu0xis5h-d4vcsa",
+      "name": "Assy5 납땜",
+      "parentId": "mu0wylpq-8j418u",
+      "standardST": null,
+      "equipmentId": "mu0yhuv0-uguyzb",
+      "dailyTarget": 175
+    },
+    {
+      "id": "mu0xiuyv-gzegwj",
+      "name": "Assy6 Z축 + 필름부착",
+      "parentId": "mu0wylpq-8j418u",
+      "standardST": null,
+      "equipmentId": null,
+      "dailyTarget": 175
+    },
+    {
+      "id": "mu0xixuz-ghutpw",
+      "name": "Assy7 리크테스트 자동화",
+      "parentId": "mu0wylpq-8j418u",
+      "standardST": 60,
+      "equipmentId": "mu0yhvcv-1h7bv2",
+      "dailyTarget": 175
+    },
+    {
+      "id": "mu0xj19t-4a3vh8",
+      "name": "Assy8 임피던스",
+      "parentId": "mu0wylpq-8j418u",
+      "standardST": null,
+      "equipmentId": null,
+      "dailyTarget": 175
+    },
+    {
+      "id": "mu0xjgp6-nfdcjf",
+      "name": "TD 에이징",
+      "parentId": "mu0wylqr-i31nok",
+      "standardST": 60
+    },
+    {
+      "id": "mu0xjl3w-4ynh28",
+      "name": "Lower + Cap Opening 본딩",
+      "parentId": "mu0wylqr-i31nok",
+      "standardST": null
+    },
+    {
+      "id": "mu0xjopq-708vnn",
+      "name": "온도센서 본딩",
+      "parentId": "mu0wylqr-i31nok",
+      "standardST": 30
+    },
+    {
+      "id": "mu0xtpw2-vat5rz",
+      "name": "브라켓 조립",
+      "parentId": "mu0wylrl-lljb6c",
+      "standardST": 30
+    },
+    {
+      "id": "mu0xtrvv-w04lcj",
+      "name": "트랜드 듀서 조립",
+      "parentId": "mu0wylrl-lljb6c",
+      "standardST": 50
+    },
+    {
+      "id": "mu0xtvx2-cyjdfe",
+      "name": "TD 리브본딩",
+      "parentId": "mu0wylrl-lljb6c",
+      "standardST": 30
+    },
+    {
+      "id": "mu0xu62r-1xbh9i",
+      "name": "공정바코드/박스라벨 발행",
+      "parentId": "mu0xil6c-lr48mq",
+      "standardST": null
+    },
+    {
+      "id": "mu0xua0r-q0zutc",
+      "name": "Upper 본딩",
+      "parentId": "mu0xil6c-lr48mq",
+      "standardST": 90
+    },
+    {
+      "id": "mu0xunct-dmulnl",
+      "name": "초점거리/공정바코드 라벨부착",
+      "parentId": "mu0xipas-584st6",
+      "standardST": null
+    },
+    {
+      "id": "mu0xuud4-cvs9fg",
+      "name": "Lower 본딩",
+      "parentId": "mu0xjl3w-4ynh28",
+      "standardST": 10
+    },
+    {
+      "id": "mu0xuxox-8qogza",
+      "name": "Cap Opening 본딩",
+      "parentId": "mu0xjl3w-4ynh28",
+      "standardST": 10
+    },
+    {
+      "id": "mu0xv5xe-lz0bu2",
+      "name": "공정바코드 발행",
+      "parentId": "mu0xu62r-1xbh9i",
+      "standardST": 3
+    },
+    {
+      "id": "mu0xv9sf-9wcjv3",
+      "name": "박스라벨 발행",
+      "parentId": "mu0xu62r-1xbh9i",
+      "standardST": 3
+    },
+    {
+      "id": "mu0xvfeq-kjqdy0",
+      "name": "초점거리 라벨부착",
+      "parentId": "mu0xunct-dmulnl",
+      "standardST": 6
+    },
+    {
+      "id": "mu0xvkh8-ku9sjl",
+      "name": "공정바코드 라벨부착",
+      "parentId": "mu0xunct-dmulnl",
+      "standardST": 6
+    },
+    {
+      "id": "mu0xvp2p-5ixmev",
+      "name": "Lower 본딩",
+      "parentId": "mu0xipas-584st6",
+      "standardST": 80
+    },
+    {
+      "id": "mu0xvvfc-eq9fgx",
+      "name": "(경화후) 동작/검수",
+      "parentId": "mu0xis5h-d4vcsa",
+      "standardST": 20
+    },
+    {
+      "id": "mu0xw07n-leb4y9",
+      "name": "보드 조립 / 케이블커팅",
+      "parentId": "mu0xis5h-d4vcsa",
+      "standardST": 30
+    },
+    {
+      "id": "mu0xw65g-03650s",
+      "name": "Soldering 자동화 / 검수",
+      "parentId": "mu0xis5h-d4vcsa",
+      "standardST": 50
+    },
+    {
+      "id": "mu0xwbpr-rkahxl",
+      "name": "z축 검사",
+      "parentId": "mu0xiuyv-gzegwj",
+      "standardST": 110
+    },
+    {
+      "id": "mu0xwkyv-ayfg1z",
+      "name": "물주입/감압 (자동화) + 캡조립",
+      "parentId": "mu0xixuz-ghutpw",
+      "standardST": 60,
+      "equipmentId": null,
+      "dailyTarget": null
+    },
+    {
+      "id": "mu0xxmy4-d0ina4",
+      "name": "Cp / D  + 임피던스 측정 + 성적서 작성",
+      "parentId": "mu0xj19t-4a3vh8",
+      "standardST": null
+    },
+    {
+      "id": "mu0xxoob-e6bkhs",
+      "name": "Cp / D 측정",
+      "parentId": "mu0xxmy4-d0ina4",
+      "standardST": 30
+    },
+    {
+      "id": "mu0xxsi1-5a8jwd",
+      "name": "임피던스 측정",
+      "parentId": "mu0xxmy4-d0ina4",
+      "standardST": 70
+    },
+    {
+      "id": "mu0xy2er-nbz5zv",
+      "name": "성적서 작성",
+      "parentId": "mu0xxmy4-d0ina4",
+      "standardST": 3
+    },
+    {
+      "id": "mu256d1w-qgk0zr",
+      "name": "필름부착",
+      "parentId": "mu0xiuyv-gzegwj",
+      "standardST": 40,
+      "equipmentId": null
+    }
+  ],
+  "equipments": [
+    {
+      "id": "mu0wyo5i-pmszgu",
+      "name": "자동 조립기 1호",
+      "investmentCost": 50000000,
+      "initialRecovered": 5000000,
+      "formula": "절감시간 / 60 * 시간당인건비",
+      "variables": [
+        {
+          "name": "시간당인건비",
+          "value": 25000
+        }
+      ]
+    },
+    {
+      "id": "mu0yhuv0-uguyzb",
+      "name": "Assy5 납땜 자동화 설비",
+      "investmentCost": 0,
+      "initialRecovered": 0,
+      "formula": "절감시간 / 60 * 시간당인건비",
+      "variables": [
+        {
+          "name": "시간당인건비",
+          "value": 25000
+        }
+      ]
+    },
+    {
+      "id": "mu0yhvcv-1h7bv2",
+      "name": "Assy7 자동화+필름 설비",
+      "investmentCost": 0,
+      "initialRecovered": 0,
+      "formula": "절감시간 / 60 * 시간당인건비",
+      "variables": [
+        {
+          "name": "시간당인건비",
+          "value": 25000
+        }
+      ]
+    }
+  ],
+  "records": [
+    {
+      "id": "mu0ytd54-oirbo9",
+      "date": "2026-09-10",
+      "processId": "mu0wylrl-lljb6c",
+      "startTime": "09:20",
+      "endTime": "09:50",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 30,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-14T08:12:37.192Z"
+    },
+    {
+      "id": "mu0ytlws-rcjh70",
+      "date": "2026-09-10",
+      "processId": "mu0wylrl-lljb6c",
+      "startTime": "09:55",
+      "endTime": "11:10",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 65,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-14T08:12:48.556Z"
+    },
+    {
+      "id": "mu0ytwac-0l5iln",
+      "date": "2026-09-10",
+      "processId": "mu0wylrl-lljb6c",
+      "startTime": "11:10",
+      "endTime": "13:05",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 55,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-14T08:13:02.004Z"
+    },
+    {
+      "id": "mu0yu2ly-whxmjv",
+      "date": "2026-09-10",
+      "processId": "mu0wylrl-lljb6c",
+      "startTime": "14:10",
+      "endTime": "14:55",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 45,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-14T08:13:10.198Z"
+    },
+    {
+      "id": "mu0yua4s-ncsd99",
+      "date": "2026-09-10",
+      "processId": "mu0wylrl-lljb6c",
+      "startTime": "15:00",
+      "endTime": "16:10",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 60,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-14T08:13:19.948Z"
+    },
+    {
+      "id": "mu0yuga4-zgbnzi",
+      "date": "2026-09-10",
+      "processId": "mu0wylrl-lljb6c",
+      "startTime": "16:10",
+      "endTime": "17:00",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 50,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-14T08:13:27.916Z"
+    },
+    {
+      "id": "mu24hoh6-qvt2dt",
+      "date": "2026-09-14",
+      "processId": "mu0wylqr-i31nok",
+      "startTime": "08:50",
+      "endTime": "09:45",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 55,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:39:15.882Z"
+    },
+    {
+      "id": "mu24i3di-36zjxu",
+      "date": "2026-09-14",
+      "processId": "mu0wylqr-i31nok",
+      "startTime": "09:45",
+      "endTime": "12:40",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 105,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:39:35.190Z"
+    },
+    {
+      "id": "mu24iejy-76vnxk",
+      "date": "2026-09-14",
+      "processId": "mu0wylqr-i31nok",
+      "startTime": "12:40",
+      "endTime": "13:50",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 70,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:39:49.678Z"
+    },
+    {
+      "id": "mu24inpv-dpjiof",
+      "date": "2026-09-14",
+      "processId": "mu0wylqr-i31nok",
+      "startTime": "13:50",
+      "endTime": "14:50",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 50,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:40:01.555Z"
+    },
+    {
+      "id": "mu24iu0l-yrq4et",
+      "date": "2026-09-14",
+      "processId": "mu0wylqr-i31nok",
+      "startTime": "14:50",
+      "endTime": "15:45",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 50,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:40:09.717Z"
+    },
+    {
+      "id": "mu24j0fj-rngyz1",
+      "date": "2026-09-14",
+      "processId": "mu0wylqr-i31nok",
+      "startTime": "15:45",
+      "endTime": "16:20",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 30,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:40:18.031Z"
+    },
+    {
+      "id": "mu24j851-ge4d1w",
+      "date": "2026-09-14",
+      "processId": "mu0wylqr-i31nok",
+      "startTime": "16:20",
+      "endTime": "17:30",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 70,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:40:28.021Z"
+    },
+    {
+      "id": "mu24jqvu-86r6k5",
+      "date": "2026-09-14",
+      "processId": "mu0wylrl-lljb6c",
+      "startTime": "08:50",
+      "endTime": "09:50",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 60,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:40:52.314Z"
+    },
+    {
+      "id": "mu24jw5o-6trj3r",
+      "date": "2026-09-14",
+      "processId": "mu0wylrl-lljb6c",
+      "startTime": "09:50",
+      "endTime": "10:50",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 50,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:40:59.148Z"
+    },
+    {
+      "id": "mu24k7hc-fdqa5r",
+      "date": "2026-09-14",
+      "processId": "mu0wylrl-lljb6c",
+      "startTime": "10:50",
+      "endTime": "13:00",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 70,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:41:13.824Z"
+    },
+    {
+      "id": "mu24kplu-s94fev",
+      "date": "2026-09-14",
+      "processId": "mu0wylrl-lljb6c",
+      "startTime": "13:00",
+      "endTime": "13:40",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 40,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:41:37.314Z"
+    },
+    {
+      "id": "mu24kup6-df05nh",
+      "date": "2026-09-14",
+      "processId": "mu0wylrl-lljb6c",
+      "startTime": "13:40",
+      "endTime": "14:40",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 50,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:41:43.914Z"
+    },
+    {
+      "id": "mu24l1w3-3837zq",
+      "date": "2026-09-14",
+      "processId": "mu0wylrl-lljb6c",
+      "startTime": "14:40",
+      "endTime": "15:35",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 55,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:41:53.235Z"
+    },
+    {
+      "id": "mu24l815-7x9s2t",
+      "date": "2026-09-14",
+      "processId": "mu0wylrl-lljb6c",
+      "startTime": "15:35",
+      "endTime": "16:40",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 55,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:42:01.193Z"
+    },
+    {
+      "id": "mu24m0oq-7bckrk",
+      "date": "2026-09-14",
+      "processId": "mu0xil6c-lr48mq",
+      "startTime": "08:40",
+      "endTime": "09:34",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 54,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:42:38.330Z"
+    },
+    {
+      "id": "mu24m676-d2huee",
+      "date": "2026-09-14",
+      "processId": "mu0xil6c-lr48mq",
+      "startTime": "09:34",
+      "endTime": "10:40",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 56,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:42:45.474Z"
+    },
+    {
+      "id": "mu24mbif-3hicy6",
+      "date": "2026-09-14",
+      "processId": "mu0xil6c-lr48mq",
+      "startTime": "10:40",
+      "endTime": "11:28",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 48,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:42:52.359Z"
+    },
+    {
+      "id": "mu24mi6v-knxge2",
+      "date": "2026-09-14",
+      "processId": "mu0xil6c-lr48mq",
+      "startTime": "11:28",
+      "endTime": "13:25",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 57,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:43:01.015Z"
+    },
+    {
+      "id": "mu24mnl5-xr7vm5",
+      "date": "2026-09-14",
+      "processId": "mu0xil6c-lr48mq",
+      "startTime": "13:25",
+      "endTime": "14:31",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 56,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:43:08.009Z"
+    },
+    {
+      "id": "mu24mthq-z4isib",
+      "date": "2026-09-14",
+      "processId": "mu0xil6c-lr48mq",
+      "startTime": "14:31",
+      "endTime": "15:17",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 46,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:43:15.662Z"
+    },
+    {
+      "id": "mu24mycf-hw8b6l",
+      "date": "2026-09-14",
+      "processId": "mu0xil6c-lr48mq",
+      "startTime": "15:17",
+      "endTime": "16:11",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 44,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:43:21.951Z"
+    },
+    {
+      "id": "mu24nlxd-r3qiil",
+      "date": "2026-09-15",
+      "processId": "mu0xipas-584st6",
+      "startTime": "09:53",
+      "endTime": "11:20",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 77,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:43:52.513Z"
+    },
+    {
+      "id": "mu24nuas-aer0z4",
+      "date": "2026-09-15",
+      "processId": "mu0xipas-584st6",
+      "startTime": "12:56",
+      "endTime": "14:00",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 64,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:44:03.364Z"
+    },
+    {
+      "id": "mu24nzea-1bggvf",
+      "date": "2026-09-15",
+      "processId": "mu0xipas-584st6",
+      "startTime": "14:10",
+      "endTime": "15:30",
+      "quantity": 25,
+      "equipmentId": null,
+      "productionMinutes": 80,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:44:09.971Z"
+    },
+    {
+      "id": "mu24pby3-6sbgtf",
+      "date": "2026-09-15",
+      "processId": "mu0xixuz-ghutpw",
+      "startTime": "08:40",
+      "endTime": "09:40",
+      "quantity": 25,
+      "equipmentId": "mu0yhvcv-1h7bv2",
+      "productionMinutes": 60,
+      "recoveredAmount": -7638.88888888889,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:45:12.891Z"
+    },
+    {
+      "id": "mu24pg7l-er4gtm",
+      "date": "2026-09-15",
+      "processId": "mu0xixuz-ghutpw",
+      "startTime": "09:40",
+      "endTime": "10:45",
+      "quantity": 25,
+      "equipmentId": "mu0yhvcv-1h7bv2",
+      "productionMinutes": 55,
+      "recoveredAmount": -5555.555555555557,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:45:18.417Z"
+    },
+    {
+      "id": "mu24pnzq-f8b5bk",
+      "date": "2026-09-15",
+      "processId": "mu0xixuz-ghutpw",
+      "startTime": "10:47",
+      "endTime": "12:33",
+      "quantity": 25,
+      "equipmentId": "mu0yhvcv-1h7bv2",
+      "productionMinutes": 46,
+      "recoveredAmount": -1805.5555555555563,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:45:28.502Z"
+    },
+    {
+      "id": "mu24q1p4-53otxh",
+      "date": "2026-09-15",
+      "processId": "mu0xixuz-ghutpw",
+      "startTime": "12:35",
+      "endTime": "13:32",
+      "quantity": 25,
+      "equipmentId": "mu0yhvcv-1h7bv2",
+      "productionMinutes": 57,
+      "recoveredAmount": -6388.88888888889,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:45:46.264Z"
+    },
+    {
+      "id": "mu24qfod-olqkhl",
+      "date": "2026-09-15",
+      "processId": "mu0xixuz-ghutpw",
+      "startTime": "13:32",
+      "endTime": "14:23",
+      "quantity": 25,
+      "equipmentId": "mu0yhvcv-1h7bv2",
+      "productionMinutes": 41,
+      "recoveredAmount": 277.7777777777768,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:46:04.381Z"
+    },
+    {
+      "id": "mu24qkx0-uoq69u",
+      "date": "2026-09-15",
+      "processId": "mu0xixuz-ghutpw",
+      "startTime": "14:23",
+      "endTime": "15:10",
+      "quantity": 25,
+      "equipmentId": "mu0yhvcv-1h7bv2",
+      "productionMinutes": 47,
+      "recoveredAmount": -2222.2222222222235,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:46:11.172Z"
+    },
+    {
+      "id": "mu24qpwb-y0wjs4",
+      "date": "2026-09-15",
+      "processId": "mu0xixuz-ghutpw",
+      "startTime": "15:10",
+      "endTime": "15:54",
+      "quantity": 25,
+      "equipmentId": "mu0yhvcv-1h7bv2",
+      "workerId": null,
+      "productionMinutes": 34,
+      "recoveredAmount": 3194.4444444444434,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:46:17.627Z"
+    },
+    {
+      "id": "mu24qu1i-n0eom3",
+      "date": "2026-09-15",
+      "processId": "mu0xixuz-ghutpw",
+      "startTime": "15:55",
+      "endTime": "16:40",
+      "quantity": 25,
+      "equipmentId": "mu0yhvcv-1h7bv2",
+      "workerId": null,
+      "productionMinutes": 45,
+      "recoveredAmount": -1388.8888888888898,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:46:22.998Z"
+    },
+    {
+      "id": "mu24xah7-qye3nf",
+      "date": "2026-09-15",
+      "processId": "mu0xj19t-4a3vh8",
+      "startTime": "08:53",
+      "endTime": "10:20",
+      "quantity": 25,
+      "equipmentId": null,
+      "workerId": null,
+      "productionMinutes": 77,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:51:24.235Z"
+    },
+    {
+      "id": "mu24xi0y-oe1v5v",
+      "date": "2026-09-15",
+      "processId": "mu0xj19t-4a3vh8",
+      "startTime": "10:20",
+      "endTime": "11:12",
+      "quantity": 25,
+      "equipmentId": null,
+      "workerId": null,
+      "productionMinutes": 52,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:51:34.018Z"
+    },
+    {
+      "id": "mu24xqmv-055urf",
+      "date": "2026-09-15",
+      "processId": "mu0xj19t-4a3vh8",
+      "startTime": "12:35",
+      "endTime": "13:22",
+      "quantity": 25,
+      "equipmentId": null,
+      "workerId": null,
+      "productionMinutes": 47,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:51:45.175Z"
+    },
+    {
+      "id": "mu24xupp-nk1sfe",
+      "date": "2026-09-15",
+      "processId": "mu0xj19t-4a3vh8",
+      "startTime": "13:24",
+      "endTime": "14:01",
+      "quantity": 25,
+      "equipmentId": null,
+      "workerId": null,
+      "productionMinutes": 36,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:51:50.461Z"
+    },
+    {
+      "id": "mu24y11h-49h3a6",
+      "date": "2026-09-15",
+      "processId": "mu0xj19t-4a3vh8",
+      "startTime": "14:10",
+      "endTime": "14:45",
+      "quantity": 25,
+      "equipmentId": null,
+      "workerId": null,
+      "productionMinutes": 35,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:51:58.661Z"
+    },
+    {
+      "id": "mu24y5j9-7xisuv",
+      "date": "2026-09-15",
+      "processId": "mu0xj19t-4a3vh8",
+      "startTime": "14:48",
+      "endTime": "15:30",
+      "quantity": 25,
+      "equipmentId": null,
+      "workerId": null,
+      "productionMinutes": 42,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:52:04.485Z"
+    },
+    {
+      "id": "mu24yace-0r5m4e",
+      "date": "2026-09-15",
+      "processId": "mu0xj19t-4a3vh8",
+      "startTime": "15:35",
+      "endTime": "16:20",
+      "quantity": 25,
+      "equipmentId": null,
+      "workerId": null,
+      "productionMinutes": 35,
+      "recoveredAmount": null,
+      "recoveredNote": null,
+      "createdAt": "2026-09-15T03:52:10.718Z"
+    }
+  ],
+  "workers": []
+}
