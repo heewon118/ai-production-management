@@ -32,18 +32,20 @@ src/app/           화면(페이지)과 API 라우트 (App Router 규칙을 따�
   production/        생산실적 입력·이력
   processes/         공정·표준ST 관리
   equipments/        자동화 설비·계산식 관리
+  admin/             관리자 설정 (편집 비밀번호 변경) — 편집 모드에서만 접근 가능
   login/             (지금은 안 씀) Microsoft 계정 로그인 화면 — 8번 참고
   auth/callback/     (지금은 안 씀) Microsoft 로그인 후 돌아오는 콜백 — 8번 참고
-  api/               Route Handler (data, teams, auth, processes, equipments, records, export)
+  api/               Route Handler (data, teams, auth, processes, equipments, records)
 src/components/    화면에서 공통으로 쓰는 컴포넌트 (Header, Card, YamazumiChart, DateField)
 src/lib/           계산·저장 등 재사용 로직
   worktime.ts        휴게시간 차감 계산
   formula.ts         사용자 계산식 파서 (eval 사용 금지)
   roi.ts             회수액 계산 / 계산식 검증
   stats.ts           기간 평균·야마즈미·ROI 집계
-  storage.ts         Supabase(teams/processes/equipments/records 테이블) 읽기·쓰기
+  storage.ts         Supabase(teams/processes/equipments/records/settings 테이블) 읽기·쓰기
   supabaseAdmin.ts   서버 전용 Supabase 클라이언트 (secret key, RLS 우회) — 절대 클라이언트 코드에서 import 금지
-  auth.ts            편집 비밀번호 확인 (isEditor)
+  auth.ts            편집 비밀번호 확인·변경 (isEditor/verifyPassword/changePassword). 비밀번호 해시는
+                     settings 테이블에 저장하고, .env의 EDIT_PASSWORD는 첫 실행 초기값으로만 쓰인다.
   supabase/          (지금은 안 씀) Microsoft 365 로그인용 Supabase 클라이언트 — 8번 참고 (supabaseAdmin.ts와는 다른 용도)
 data/              (지금은 참고용 백업만) 예전에 쓰던 파일 저장 방식의 흔적. 실제 데이터는 Supabase에 있다. git에 올리지 않음
 supabase/migrations/  Supabase 테이블 스키마(SQL)
@@ -77,7 +79,8 @@ PRD에서 정한 아래 규칙은 코드로 구현할 때 절대 놓치면 안 �
 아래 항목은 PRD 6번에서 "이번엔 만들지 않기"로 정한 것들이다. 요청받지 않는 한 먼저 만들지 않는다.
 
 - 회원가입/이메일 로그인 (지금은 편집 시 비밀번호 하나로만 보호, 조회는 누구나 가능. Microsoft 365 로그인은 구현은 끝났지만 회사 Azure 관리자 동의 대기 중이라 잠시 보류 — 8번 참고)
-- 복잡한 데이터베이스 구축·다중 테이블 연동 (Supabase의 teams/processes/equipments/records 4개 단순 테이블 수준을 넘어서는 스키마는 만들지 않는다. Vercel 배포 시 파일 시스템에 쓸 수 없어 Supabase로 옮긴 것이며, 자세한 내용은 4번 "누적 데이터는 반드시 유지" 참고)
+- 데이터 내보내기(다운로드) 기능 (한 번 만들었다가 사용자 요청으로 제거함. 코드는 `trash-can/api-export/route.ts`에 남겨뒀다 — 필요해지면 요청 시 되돌린다)
+- 복잡한 데이터베이스 구축·다중 테이블 연동 (Supabase의 teams/processes/equipments/records/settings, 딱 5개 단순 테이블 수준을 넘어서는 스키마는 만들지 않는다. Vercel 배포 시 파일 시스템에 쓸 수 없어 Supabase로 옮긴 것이며, 자세한 내용은 4번 "누적 데이터는 반드시 유지" 참고)
 - 생산조건·근무시간 기반 타임테이블 시각화
 - 야마즈미 차트의 작업자/설비별 세분화
 - 이상 징후 자동 알림/예측 기능

@@ -4,6 +4,11 @@
  * 색상 토큰
  * 차트 색은 검증된 카테고리 팔레트를 그대로 쓴다. (색맹 구분 / 명암 검사 통과한 조합)
  * 라이트 / 다크 두 벌을 각각 정의한다.
+ *
+ * 기본은 시스템(브라우저) 설정을 따르지만, 헤더의 다크모드/라이트모드 버튼으로
+ * 직접 고르면 <html data-theme="light|dark">로 저장돼 시스템 설정보다 우선한다.
+ * (선택값은 localStorage에 저장되어 다음 방문에도 유지된다 — layout.tsx의 인라인
+ * 스크립트가 화면이 그려지기 전에 이 속성을 미리 붙여 깜빡임을 막는다)
  */
 :root {
   color-scheme: light;
@@ -23,19 +28,21 @@
   --status-warning: #fab219;
   --status-critical: #d03b3b;
 
-  --series-1: #2a78d6;
-  --series-2: #eb6834;
-  --series-3: #1baf7a;
-  --series-4: #eda100;
-  --series-5: #e87ba4;
-  --series-6: #008300;
-  --series-7: #4a3aa7;
-  --series-8: #e34948;
-  --series-other: #898781;
+  /* 톤다운(저채도) 카테고리 팔레트 — 공정마다 고유 색이 겹치지 않게 순서대로 배정한다. */
+  --series-1: #5b7fa6;
+  --series-2: #c17a4e;
+  --series-3: #4f9678;
+  --series-4: #bd9a4b;
+  --series-5: #b97e94;
+  --series-6: #7a8f4e;
+  --series-7: #7d70a8;
+  --series-8: #b06258;
+  --series-other: #96948c;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  /* 시스템이 다크면 따르되, 사용자가 화면에서 "라이트 모드"를 직접 골랐으면 그걸 우선한다. */
+  :root:not([data-theme="light"]) {
     color-scheme: dark;
 
     --surface-page: #0d0d0d;
@@ -53,16 +60,46 @@
     --status-warning: #fab219;
     --status-critical: #d03b3b;
 
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --series-3: #199e70;
-    --series-4: #c98500;
-    --series-5: #d55181;
-    --series-6: #008300;
-    --series-7: #9085e9;
-    --series-8: #e66767;
-    --series-other: #898781;
+    --series-1: #7ba0c9;
+    --series-2: #d99a6e;
+    --series-3: #74b696;
+    --series-4: #d4b671;
+    --series-5: #cf9aac;
+    --series-6: #a0b06e;
+    --series-7: #a396c9;
+    --series-8: #cf8478;
+    --series-other: #a8a69d;
   }
+}
+
+/* 시스템이 라이트여도, 사용자가 화면에서 "다크 모드"를 직접 골랐으면 이 값을 쓴다. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --surface-page: #0d0d0d;
+  --surface-card: #1a1a19;
+
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+
+  --line-grid: #2c2c2a;
+  --line-axis: #383835;
+  --line-border: rgba(255, 255, 255, 0.1);
+
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-critical: #d03b3b;
+
+  --series-1: #7ba0c9;
+  --series-2: #d99a6e;
+  --series-3: #74b696;
+  --series-4: #d4b671;
+  --series-5: #cf9aac;
+  --series-6: #a0b06e;
+  --series-7: #a396c9;
+  --series-8: #cf8478;
+  --series-other: #a8a69d;
 }
 
 /* Tailwind 유틸리티에서 쓸 수 있도록 토큰을 연결한다. */
@@ -77,16 +114,26 @@
   --color-good: var(--status-good);
   --color-warning: var(--status-warning);
   --color-critical: var(--status-critical);
-  --font-sans: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+  --font-sans: "Pretendard Variable", Pretendard, system-ui, -apple-system, "Segoe UI", "Malgun Gothic",
+    sans-serif;
 }
 
 body {
   background: var(--surface-page);
   color: var(--text-primary);
-  font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+  font-family: "Pretendard Variable", Pretendard, system-ui, -apple-system, "Segoe UI", "Malgun Gothic",
+    sans-serif;
 }
 
 /* 표의 숫자가 세로로 가지런히 보이도록 */
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/*
+ * <code>는 계산식에 쓸 수 있는 값(수량/생산시간 등) 같은 한글 텍스트를 보여주는 데도 쓰인다.
+ * 브라우저 기본 monospace 글꼴은 한글 글리프가 어색해 보이므로, 본문과 같은 Pretendard를 쓰게 한다.
+ */
+code {
+  font-family: inherit;
 }

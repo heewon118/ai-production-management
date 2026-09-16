@@ -9,6 +9,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import ThemeToggle from "@/components/ThemeToggle";
 import { apiSend } from "@/lib/client";
 
 const MENUS = [
@@ -18,11 +19,14 @@ const MENUS = [
   { href: "/equipments", label: "자동화 설비 설정" },
 ];
 
+// 편집 모드일 때만 보이는 메뉴 (비밀번호 변경 등 관리 기능).
+const ADMIN_MENU = { href: "/admin", label: "관리자 설정" };
+
 export default function Header() {
   const pathname = usePathname();
   const [editor, setEditor] = useState(false);
   // 관리자(편집 모드)가 아니면 대시보드만 보이게 한다.
-  const visibleMenus = editor ? MENUS : MENUS.filter((menu) => menu.href === "/");
+  const visibleMenus = editor ? [...MENUS, ADMIN_MENU] : MENUS.filter((menu) => menu.href === "/");
   const [password, setPassword] = useState("");
   const [opened, setOpened] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,12 +82,7 @@ export default function Header() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          <a
-            href="/api/export"
-            className="rounded-md border border-line px-3 py-1.5 text-sm text-ink-soft hover:text-ink"
-          >
-            데이터 내보내기
-          </a>
+          <ThemeToggle />
 
           {editor ? (
             <div className="flex items-center gap-2">

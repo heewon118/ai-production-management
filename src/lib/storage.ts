@@ -268,3 +268,30 @@ export async function updateDb<T>(updater: (db: Database) => T | Promise<T>): Pr
 export function createId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
+
+/*
+ * ── 관리자 설정(편집 비밀번호) ──────────────────────────────────────────
+ * teams/equipments/processes/records와 달리 브라우저(/api/data)로 절대 내려주지
+ * 않는 값이라 readDb()/updateDb()의 Database 타입에는 넣지 않고 따로 다룬다.
+ */
+
+const SETTINGS_ROW_ID = "app";
+
+/** 저장된 비밀번호 해시. 아직 한 번도 설정하지 않았으면 null. */
+export async function readPasswordHash(): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from("settings")
+    .select("password_hash")
+    .eq("id", SETTINGS_ROW_ID)
+    .maybeSingle();
+  if (error) throw new Error(`설정을 불러오지 못했습니다: ${error.message}`);
+  return (data as { password_hash: string } | null)?.password_hash ?? null;
+}
+
+/** 비밀번호 해시를 저장(생성 또는 교체)한다. */
+export async function writePasswordHash(hash: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("settings")
+    .upsert({ id: SETTINGS_ROW_ID, password_hash: hash });
+  if (error) throw new Error(`설정을 저장하지 못했습니다: ${error.message}`);
+}

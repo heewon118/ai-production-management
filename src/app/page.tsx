@@ -27,8 +27,14 @@ import {
   getMonthRange,
   getWeekRange,
   partTeamOf,
+  todayLocal,
   yesterdayLocal,
 } from "@/lib/stats";
+
+/** 실적 날짜 중 가장 이른 날짜를 찾는다. 실적이 없으면 null. */
+function earliestDate(records: { date: string }[]): string | null {
+  return records.reduce<string | null>((min, record) => (min === null || record.date < min ? record.date : min), null);
+}
 
 // 오늘 실적은 아직 다 안 들어와 있을 수 있어서, 기본으로는 어제 기준을 보여준다.
 // (나중에 실시간 연동이 되면 오늘 기준으로 바뀔 수 있다)
@@ -55,17 +61,22 @@ function achievementLabel(result: AchievementResult): string {
 
 export default function DashboardPage() {
   const { data, loading, error } = useAppData();
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  // null이면 "직접 안 골랐다" — 이 팀의 기본 기간(데이터가 실제 있는 첫 날짜 ~ 오늘)을 그대로 쓴다.
+  const [fromOverride, setFromOverride] = useState<string | null>(null);
+  const [toOverride, setToOverride] = useState<string | null>(null);
   const [partId, setPartId] = useState("");
 
   // 팀 탭 — 팀마다 대시보드를 따로 본다. (기존 조립/검사/포장은 생산2팀 소속)
   const [selectedTeam, setSelectedTeam] = useState<string>("team2");
 
-  /** 팀 탭을 바꾸면 파트 선택을 그 팀 기준으로 다시 고르게 한다. */
+  /** 팀 탭을 바꾸면 파트 선택과 기간을 그 팀 기준으로 다시 맞춘다. */
   function selectTeam(team: string) {
     setSelectedTeam(team);
     setPartId("");
+    setFromOverride(null);
+    setToOverride(null);
+    setEquipmentFromOverride(null);
+    setEquipmentToOverride(null);
   }
   /**
    * 여유율(%) — 표준ST는 실제로 걸리는 시간(리얼타임)이므로 여기에 여유를 더해 목표선으로 본다.
@@ -150,10 +161,26 @@ export default function DashboardPage() {
       };
     }, [data, achievementPeriod, secondLevelProcesses, selectedAchievementProcessId, achievementRange]);
 
-  // 자동화 설비 효과금액 기간 필터. 비워두면(기본) 전체 누적을 본다.
-  // 아직 데이터를 다 입력하지 않은 최근 기간을 빼고 보고 싶을 때 쓴다.
-  const [equipmentFrom, setEquipmentFrom] = useState("");
-  const [equipmentTo, setEquipmentTo] = useState("");
+  // 자동화 설비 효과금액 기간 필터. "전체기간"을 누르면 이 팀의 데이터가 실제 있는
+  // 첫 날짜 ~ 오늘로 되돌아간다(그 범위 안에 모든 실적이 들어있으므로 전체 누적과 같다).
+  const [equipmentFromOverride, setEquipmentFromOverride] = useState<string | null>(null);
+  const [equipmentToOverride, setEquipmentToOverride] = useState<string | null>(null);
+
+  // 선택한 팀 소속 실적만으로 "데이터가 실제 있는 첫 날짜"를 구한다.
+  const teamRecordsForRange = useMemo(
+    () => (data ? data.records.filter((record) => partTeamOf(record.processId, data.processes) === selectedTeam) : []),
+    [data, selectedTeam],
+  );
+  const defaultRange = useMemo(() => {
+    const today = todayLocal();
+    return { from: earliestDate(teamRecordsForRange) ?? today, to: today };
+  }, [teamRecordsForRange]);
+
+  // 직접 고른 값이 있으면 그 값을, 없으면 이 팀의 기본 기간(전체기간)을 쓴다.
+  const from = fromOverride ?? defaultRange.from;
+  const to = toOverride ?? defaultRange.to;
+  const equipmentFrom = equipmentFromOverride ?? defaultRange.from;
+  const equipmentTo = equipmentToOverride ?? defaultRange.to;
 
   const view = useMemo(() => {
     if (!data) return null;
@@ -245,29 +272,33 @@ export default function DashboardPage() {
 
       <Card
         title="자동화 설비 효과금액"
-        description={`설비별 효과금액입니다. 저장된 값이 아니라 항상 지금 계산식으로 다시 계산하며, ${equipmentFrom || equipmentTo ? "지정한 기간만" : "기간과 상관없이 전체 누적을"} 보여줍니다. 아직 실적 입력이 덜 끝난 기간은 필터로 빼고 볼 수 있습니다.`}
+        description={`설비별 효과금액입니다. 저장된 값이 아니라 항상 지금 계산식으로 다시 계산하며, ${
+          equipmentFromOverride !== null || equipmentToOverride !== null
+            ? "지정한 기간만"
+            : "기간과 상관없이 전체 누적을"
+        } 보여줍니다. 아직 실적 입력이 덜 끝난 기간은 필터로 빼고 볼 수 있습니다.`}
         action={
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <label className="text-ink-muted">실적 입력 시점</label>
             <DateField
               value={equipmentFrom}
-              onChange={setEquipmentFrom}
+              onChange={setEquipmentFromOverride}
               className="rounded-md border border-line bg-card px-2 py-1 text-ink"
             />
             <span className="text-ink-muted">~</span>
             <DateField
               value={equipmentTo}
-              onChange={setEquipmentTo}
+              onChange={setEquipmentToOverride}
               className="rounded-md border border-line bg-card px-2 py-1 text-ink"
             />
             <button
               type="button"
               onClick={() => {
-                setEquipmentFrom("");
-                setEquipmentTo("");
+                setEquipmentFromOverride(null);
+                setEquipmentToOverride(null);
               }}
               className={`rounded-md px-2 py-1 transition-colors ${
-                equipmentFrom || equipmentTo
+                equipmentFromOverride !== null || equipmentToOverride !== null
                   ? "border border-line text-ink-soft hover:text-ink"
                   : "bg-ink text-card font-medium"
               }`}
@@ -462,23 +493,23 @@ export default function DashboardPage() {
               <label className="text-ink-muted">기간</label>
               <DateField
                 value={from}
-                onChange={setFrom}
+                onChange={setFromOverride}
                 className="rounded-md border border-line bg-card px-2 py-1 text-ink"
               />
               <span className="text-ink-muted">~</span>
               <DateField
                 value={to}
-                onChange={setTo}
+                onChange={setToOverride}
                 className="rounded-md border border-line bg-card px-2 py-1 text-ink"
               />
               <button
                 type="button"
                 onClick={() => {
-                  setFrom("");
-                  setTo("");
+                  setFromOverride(null);
+                  setToOverride(null);
                 }}
                 className={`rounded-md px-2 py-1 transition-colors ${
-                  from || to
+                  fromOverride !== null || toOverride !== null
                     ? "border border-line text-ink-soft hover:text-ink"
                     : "bg-ink text-card font-medium"
                 }`}
