@@ -19,6 +19,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       dailyTarget?: unknown;
       workers?: unknown;
       worker?: unknown;
+      order?: unknown;
     };
 
     const updated = await updateDb((db) => {
@@ -85,6 +86,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if ("worker" in body) {
         const worker = typeof body.worker === "string" && body.worker.trim() ? body.worker.trim() : null;
         process.worker = worker;
+      }
+
+      // [2단계 공정 전용] 공정 목록·야마즈미 차트 표시 순서. 비우면 순서 지정을 해제한다.
+      if ("order" in body) {
+        if (body.order === null || body.order === "") {
+          process.order = null;
+        } else {
+          process.order = parsePositiveNumber(body.order, "표시 순서", true);
+        }
       }
 
       return process;

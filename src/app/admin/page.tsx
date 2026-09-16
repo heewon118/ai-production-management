@@ -73,7 +73,7 @@ function PasswordCard() {
   }
 
   return (
-    <Card title="편집 비밀번호 변경" description="바꾸고 나면 편집 모드가 풀려 새 비밀번호로 다시 로그인해야 합니다.">
+    <Card title="편집 비밀번호 변경">
       <form onSubmit={submit} className="max-w-sm space-y-4">
         <label className="flex flex-col gap-1">
           <span className="text-xs text-ink-muted">현재 비밀번호</span>

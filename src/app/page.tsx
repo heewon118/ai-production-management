@@ -13,7 +13,7 @@ import Card from "@/components/Card";
 import DateField from "@/components/DateField";
 import YamazumiChart from "@/components/YamazumiChart";
 import { useAppData } from "@/lib/client";
-import { buildColorMap, colorFrom } from "@/lib/colors";
+import { buildColorMap, buildYamazumiColorMap, colorFrom } from "@/lib/colors";
 import {
   type AchievementResult,
   type AchievementStatus,
@@ -27,6 +27,7 @@ import {
   getMonthRange,
   getWeekRange,
   partTeamOf,
+  teamProcessIdsInOrder,
   todayLocal,
   yesterdayLocal,
 } from "@/lib/stats";
@@ -210,9 +211,13 @@ export default function DashboardPage() {
       equipmentFrom || equipmentTo ? { from: equipmentFrom, to: equipmentTo } : undefined,
     );
 
-    const colorMap = buildColorMap(data.processes.map((process) => process.id));
+    // 야마즈미 차트·범례는 막대(그룹)마다 안에서만 순서대로 색을 새로 매긴다
+    // (다른 막대·다른 파트에 공정이 아무리 많아도, 한 막대 안 구간끼리는 항상 색이 겹치지 않는다).
+    const chartColorMap = buildYamazumiColorMap(yamazumi);
+    // 공정별 비교표는 팀 전체를 한 표에 늘어놓으므로, 팀 안에서 순서대로 색을 배정한다.
+    const tableColorMap = buildColorMap(teamProcessIdsInOrder(data.processes, selectedTeam));
 
-    return { periodRecords, processStats, yamazumi, equipmentStats, colorMap };
+    return { periodRecords, processStats, yamazumi, equipmentStats, chartColorMap, tableColorMap };
   }, [data, from, to, selectedPartId, selectedTeam, equipmentFrom, equipmentTo]);
 
   if (loading) {
@@ -272,11 +277,6 @@ export default function DashboardPage() {
 
       <Card
         title="자동화 설비 효과금액"
-        description={`설비별 효과금액입니다. 저장된 값이 아니라 항상 지금 계산식으로 다시 계산하며, ${
-          equipmentFromOverride !== null || equipmentToOverride !== null
-            ? "지정한 기간만"
-            : "기간과 상관없이 전체 누적을"
-        } 보여줍니다. 아직 실적 입력이 덜 끝난 기간은 필터로 빼고 볼 수 있습니다.`}
         action={
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <label className="text-ink-muted">실적 입력 시점</label>
@@ -357,11 +357,6 @@ export default function DashboardPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card
           title="일일 목표 달성 현황"
-          description={
-            achievementPeriod === "day"
-              ? `${achievementDate} 기준, 현재 파트(${parts.find((part) => part.id === selectedPartId)?.name ?? ""}) 2단계 공정들의 목표수량 달성 여부입니다. (담당자 기준)`
-              : `${achievementRange.from} ~ ${achievementRange.to} (${achievementPeriod === "week" ? "주간" : "월간"}) 기준, 고른 공정 하나의 달성 여부입니다.`
-          }
           action={
             <div className="flex flex-wrap items-center gap-2 text-sm">
               {(["day", "week", "month"] as const).map((period) => (
@@ -472,7 +467,6 @@ export default function DashboardPage() {
 
         <Card
           title="표준ST 대비 실적 (야마즈미)"
-          description="파트를 골라서 봅니다. 가로축은 2단계 공정이며, 생산수량은 2단계 공정 기준입니다(하위 공정 실적은 반영하지 않습니다). 점선은 표준ST(리얼타임), 주황선은 여유율을 더한 목표선입니다."
           action={
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <label className="text-ink-muted">여유율</label>
@@ -544,7 +538,7 @@ export default function DashboardPage() {
 
           <YamazumiChart
             groups={view.yamazumi}
-            colorOf={(processId) => colorFrom(view.colorMap, processId)}
+            colorOf={(processId) => colorFrom(view.chartColorMap, processId)}
             bufferPercent={buffer}
           />
 
@@ -561,7 +555,7 @@ export default function DashboardPage() {
                 <span key={segment.processId} className="flex items-center gap-2 text-xs text-ink-soft">
                   <span
                     className="inline-block h-3 w-3 rounded-sm"
-                    style={{ backgroundColor: colorFrom(view.colorMap, segment.processId) }}
+                    style={{ backgroundColor: colorFrom(view.chartColorMap, segment.processId) }}
                   />
                   {segment.name}
                 </span>
@@ -571,10 +565,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <Card
-        title="공정별 표준ST(여유율 포함) 비교"
-        description={`개당 실제ST = 총 생산시간 ÷ 총 생산수량. 표준ST에 여유율 ${buffer}%를 더한 값과 비교합니다. 차이(%)가 양수면 여유율 포함 기준보다 오래 걸린 것입니다.`}
-      >
+      <Card title="공정별 표준ST(여유율 포함) 비교">
         {view.processStats.length === 0 ? (
           <p className="py-8 text-center text-sm text-ink-muted">선택한 기간에 실적이 없습니다.</p>
         ) : (
@@ -606,7 +597,7 @@ export default function DashboardPage() {
                         <span className="flex items-center gap-2">
                           <span
                             className="inline-block h-3 w-3 shrink-0 rounded-sm"
-                            style={{ backgroundColor: colorFrom(view.colorMap, stat.process.id) }}
+                            style={{ backgroundColor: colorFrom(view.tableColorMap, stat.process.id) }}
                           />
                           {stat.path}
                         </span>

@@ -43,6 +43,7 @@ type ProcessRow = {
   workers: string | null;
   worker: string | null;
   equipment_id: string | null;
+  sort_order: number | null;
 };
 
 function processFromRow(row: ProcessRow): Process {
@@ -56,6 +57,7 @@ function processFromRow(row: ProcessRow): Process {
     workers: row.workers ?? undefined,
     worker: row.worker,
     equipmentId: row.equipment_id,
+    order: row.sort_order,
   };
 }
 
@@ -70,6 +72,7 @@ function processToRow(process: Process): ProcessRow {
     workers: process.workers ?? null,
     worker: process.worker ?? null,
     equipment_id: process.equipmentId ?? null,
+    sort_order: process.order ?? null,
   };
 }
 

@@ -144,10 +144,7 @@ export default function EquipmentsPage() {
         ))}
       </div>
 
-      <Card
-        title="계산식에 쓸 수 있는 값"
-        description="아래 값들은 실적을 입력할 때 자동으로 채워집니다. 그 외 값(단가 등)은 설비마다 직접 등록합니다."
-      >
+      <Card title="계산식에 쓸 수 있는 값">
         <ul className="space-y-1.5 text-sm">
           {BUILT_IN_VARIABLES.map((variable) => (
             <li key={variable.name} className="flex flex-wrap gap-2">
@@ -197,7 +194,7 @@ export default function EquipmentsPage() {
         </Card>
       ) : null}
 
-      <Card title="설비 목록" description="계산식을 수정해도 이미 저장된 실적의 회수액은 바뀌지 않습니다.">
+      <Card title="설비 목록">
         {teamEquipments.length === 0 ? (
           <p className="py-8 text-center text-sm text-ink-muted">등록된 설비가 없습니다.</p>
         ) : (

@@ -25,7 +25,7 @@ import {
   todayLocal,
 } from "@/lib/stats";
 import type { AssistType, Database, ProductionRecord } from "@/lib/types";
-import { BREAK_TIMES, calcProductionMinutes, WORK_END, WORK_START } from "@/lib/worktime";
+import { calcProductionMinutes, WORK_END, WORK_START } from "@/lib/worktime";
 
 const TODAY = todayLocal();
 
@@ -428,10 +428,7 @@ export default function ProductionPage() {
       </div>
 
       {editor ? (
-        <Card
-          title="생산실적 입력"
-          description={`근무시간 ${WORK_START}~${WORK_END} 기준이며, 점심·휴식시간은 자동으로 빠집니다. 시간은 선택창으로도, 숫자 타이핑으로도 입력할 수 있습니다.`}
-        >
+        <Card title="생산실적 입력">
           {parts.length === 0 ? (
             <p className="text-sm text-ink-muted">먼저 파트를 등록해주세요. (공정 설정 메뉴)</p>
           ) : (
@@ -686,7 +683,6 @@ export default function ProductionPage() {
 
       <Card
         title="생산실적 이력"
-        description={`총 ${records.length}건. 휴게시간: ${BREAK_TIMES.map((item) => `${item.start}~${item.end}`).join(", ")}`}
         action={
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <label className="text-ink-muted">날짜</label>

@@ -72,6 +72,48 @@ export function partTeamOf(processId: string, processes: Process[]): string {
   return top?.team ?? "team2";
 }
 
+/**
+ * 형제 공정들을 order 필드 기준으로 정렬한다.
+ * order가 없는 항목은 원래 순서를 유지한 채 뒤로 보낸다(설정한 항목이 우선한다).
+ */
+export function sortByProcessOrder<T extends { order?: number | null }>(items: T[]): T[] {
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => {
+      const orderA = a.item.order ?? null;
+      const orderB = b.item.order ?? null;
+      if (orderA === null && orderB === null) return a.index - b.index;
+      if (orderA === null) return 1;
+      if (orderB === null) return -1;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.index - b.index;
+    })
+    .map(({ item }) => item);
+}
+
+/** 어떤 공정 아래(2단계 이하)를 트리 순서(형제는 order 반영)로 평평하게 편다. */
+function descendantIdsInOrder(processes: Process[], parentId: string): string[] {
+  const result: string[] = [];
+  const children = sortByProcessOrder(processes.filter((process) => process.parentId === parentId));
+  for (const child of children) {
+    result.push(child.id);
+    result.push(...descendantIdsInOrder(processes, child.id));
+  }
+  return result;
+}
+
+/**
+ * 이 팀 소속 파트 전체의 하위 공정을 트리 순서로 평평하게 편다.
+ * 파트별 상세가 아니라 팀 전체를 한 표에 늘어놓는 화면(공정별 비교표)에서 쓴다.
+ * 팀별로 색을 따로 배정해, 다른 팀 공정 수에 영향받지 않게 한다.
+ */
+export function teamProcessIdsInOrder(processes: Process[], teamId: string): string[] {
+  const parts = sortByProcessOrder(
+    processes.filter((process) => process.parentId === null && (process.team ?? "team2") === teamId),
+  );
+  return parts.flatMap((part) => descendantIdsInOrder(processes, part.id));
+}
+
 /** 공정의 단계(1~3)를 구한다. */
 export function getProcessLevel(processId: string, processes: Process[]): number {
   const map = toProcessMap(processes);
@@ -276,7 +318,7 @@ export function buildYamazumiByPart(
   processes: Process[],
   partId: string,
 ): YamazumiGroup[] {
-  const secondLevel = processes.filter((process) => process.parentId === partId);
+  const secondLevel = sortByProcessOrder(processes.filter((process) => process.parentId === partId));
 
   return secondLevel
     .map((process) => {

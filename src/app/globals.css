@@ -28,15 +28,22 @@
   --status-warning: #fab219;
   --status-critical: #d03b3b;
 
-  /* 톤다운(저채도) 카테고리 팔레트 — 공정마다 고유 색이 겹치지 않게 순서대로 배정한다. */
-  --series-1: #5b7fa6;
-  --series-2: #c17a4e;
-  --series-3: #4f9678;
-  --series-4: #bd9a4b;
-  --series-5: #b97e94;
-  --series-6: #7a8f4e;
-  --series-7: #7d70a8;
-  --series-8: #b06258;
+  /*
+   * 톤다운(저채도) 카테고리 팔레트 — 공정마다 고유 색이 겹치지 않게 순서대로 배정한다.
+   * 12색을 색상환에 고르게 배치해 공정 수가 많아도 서로 구분되게 했다.
+   */
+  --series-1: #5181a4;
+  --series-2: #5158a4;
+  --series-3: #7351a4;
+  --series-4: #9d51a4;
+  --series-5: #a45181;
+  --series-6: #a45158;
+  --series-7: #a47351;
+  --series-8: #a49d51;
+  --series-9: #81a451;
+  --series-10: #58a451;
+  --series-11: #51a473;
+  --series-12: #51a49d;
   --series-other: #96948c;
 }
 
@@ -60,14 +67,18 @@
     --status-warning: #fab219;
     --status-critical: #d03b3b;
 
-    --series-1: #7ba0c9;
-    --series-2: #d99a6e;
-    --series-3: #74b696;
-    --series-4: #d4b671;
-    --series-5: #cf9aac;
-    --series-6: #a0b06e;
-    --series-7: #a396c9;
-    --series-8: #cf8478;
+    --series-1: #79a4c3;
+    --series-2: #797fc3;
+    --series-3: #9879c3;
+    --series-4: #bd79c3;
+    --series-5: #c379a4;
+    --series-6: #c3797f;
+    --series-7: #c39879;
+    --series-8: #c3bd79;
+    --series-9: #a4c379;
+    --series-10: #7fc379;
+    --series-11: #79c398;
+    --series-12: #79c3bd;
     --series-other: #a8a69d;
   }
 }
@@ -91,14 +102,18 @@
   --status-warning: #fab219;
   --status-critical: #d03b3b;
 
-  --series-1: #7ba0c9;
-  --series-2: #d99a6e;
-  --series-3: #74b696;
-  --series-4: #d4b671;
-  --series-5: #cf9aac;
-  --series-6: #a0b06e;
-  --series-7: #a396c9;
-  --series-8: #cf8478;
+  --series-1: #79a4c3;
+  --series-2: #797fc3;
+  --series-3: #9879c3;
+  --series-4: #bd79c3;
+  --series-5: #c379a4;
+  --series-6: #c3797f;
+  --series-7: #c39879;
+  --series-8: #c3bd79;
+  --series-9: #a4c379;
+  --series-10: #7fc379;
+  --series-11: #79c398;
+  --series-12: #79c3bd;
   --series-other: #a8a69d;
 }
 

@@ -14,7 +14,7 @@ import { useMemo, useState } from "react";
 import Card from "@/components/Card";
 import { apiSend, useAppData } from "@/lib/client";
 import { buildColorMap, colorFrom } from "@/lib/colors";
-import { joinWorkerNames, parseWorkerNames } from "@/lib/stats";
+import { joinWorkerNames, parseWorkerNames, sortByProcessOrder } from "@/lib/stats";
 import type { Equipment, Process } from "@/lib/types";
 
 const MAX_LEVEL = 5;
@@ -62,6 +62,11 @@ function buildTree(processes: Process[]): TreeNode[] {
       }
     }
     roots.push(node);
+  }
+
+  // 형제 공정은 순서(order)를 설정해뒀으면 그 순서대로, 아니면 원래 순서 그대로 보여준다.
+  for (const node of nodes.values()) {
+    node.children = sortByProcessOrder(node.children);
   }
 
   // 단계(level)를 채워 넣는다.
@@ -255,7 +260,6 @@ export default function ProcessesPage() {
 
       <Card
         title="파트·공정 지정"
-        description={`1단계는 파트, 그 아래가 공정입니다(최대 ${MAX_LEVEL}단계). 이름과 표준ST는 언제든 고쳐서 저장할 수 있습니다. 표준ST는 "1개 생산에 필요한 시간(초)"입니다. 2단계 공정에는 전담 담당자(위 "담당자 지정" 표에 적은 이름 중에서)를 지정할 수 있습니다.`}
         action={
           <div className="flex flex-wrap gap-1">
             {parts.length > 0 ? (
@@ -384,7 +388,6 @@ function PartWorkerManager({
   return (
     <Card
       title="담당자 지정"
-      description="파트마다 담당자 이름을 콤마로 구분해서 한 번에 적어두면, 생산실적 입력·전담 담당자 지정에서 그 목록에서 고를 수 있습니다."
       action={
         <button
           type="button"
@@ -476,6 +479,7 @@ type ProcessPatch = {
   equipmentId: string;
   dailyTarget?: string;
   worker?: string;
+  order?: string;
 };
 
 type RowProps = {
@@ -527,22 +531,26 @@ function ProcessRow({
   const savedEquipmentId = node.equipmentId ?? "";
   const savedDailyTarget = node.dailyTarget == null ? "" : String(node.dailyTarget);
   const savedWorker = node.worker ?? "";
+  const savedOrder = node.order == null ? "" : String(node.order);
 
   const [name, setName] = useState(savedName);
   const [standardST, setStandardST] = useState(savedST);
   const [equipmentId, setEquipmentId] = useState(savedEquipmentId);
   const [dailyTarget, setDailyTarget] = useState(savedDailyTarget);
   const [worker, setWorker] = useState(savedWorker);
+  const [order, setOrder] = useState(savedOrder);
   const [addOpen, setAddOpen] = useState(false);
   const [childName, setChildName] = useState("");
 
   const isPart = node.level === 1;
+  const isSecondLevel = !isPart && node.level === 2;
 
   const changed =
     name !== savedName ||
     standardST !== savedST ||
     equipmentId !== savedEquipmentId ||
-    (!isPart && (dailyTarget !== savedDailyTarget || worker !== savedWorker));
+    (!isPart && (dailyTarget !== savedDailyTarget || worker !== savedWorker)) ||
+    (isSecondLevel && order !== savedOrder);
 
   const linkedEquipment = equipments.find((item) => item.id === node.equipmentId);
 
@@ -569,6 +577,7 @@ function ProcessRow({
       standardST,
       equipmentId,
       ...(isPart ? {} : { dailyTarget, worker }),
+      ...(isSecondLevel ? { order } : {}),
     });
   }
 
@@ -659,8 +668,19 @@ function ProcessRow({
               <span className="text-xs text-ink-muted">초/개</span>
 
               {/* 일일 목표수량과 전담 담당자는 2단계 공정에만 설정한다 (대시보드 달성 현황에서 쓴다) */}
-              {!isPart && node.level === 2 ? (
+              {isSecondLevel ? (
                 <>
+                  <input
+                    type="number"
+                    min={0}
+                    step="1"
+                    value={order}
+                    onChange={(event) => setOrder(event.target.value)}
+                    placeholder="순서"
+                    title="공정 목록·야마즈미 차트 표시 순서 (작을수록 앞)"
+                    className="tabular w-16 rounded-md border border-line bg-card px-2 py-1.5 text-right text-sm text-ink"
+                  />
+
                   <input
                     type="number"
                     min={0}
@@ -733,6 +753,9 @@ function ProcessRow({
                   ) : null}
                 </>
               )}
+              {node.level === 2 && node.order != null ? (
+                <span className="text-xs text-ink-muted">· 순서 {node.order}</span>
+              ) : null}
               {node.level === 2 && node.dailyTarget != null ? (
                 <span className="text-xs text-ink-muted">· 목표 {node.dailyTarget}개/일</span>
               ) : null}
