@@ -14,7 +14,7 @@ import { useMemo, useState } from "react";
 import Card from "@/components/Card";
 import { apiSend, useAppData } from "@/lib/client";
 import { buildColorMap, colorFrom } from "@/lib/colors";
-import { parseWorkerNames } from "@/lib/stats";
+import { joinWorkerNames, parseWorkerNames } from "@/lib/stats";
 import type { Equipment, Process } from "@/lib/types";
 
 const MAX_LEVEL = 5;
@@ -81,22 +81,41 @@ function flattenTree(nodes: TreeNode[]): TreeNode[] {
 
 export default function ProcessesPage() {
   const { data, loading, error, reload } = useAppData();
-  const [newName, setNewName] = useState("");
-  const [newParentId, setNewParentId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // 팀 탭 — 팀마다 파트·공정을 따로 관리한다. (기존 조립/검사/포장은 생산2팀 소속)
+  const [selectedTeam, setSelectedTeam] = useState<string>("team2");
+
+  // 팀 추가 — 팀 탭 줄의 + 버튼으로 새 생산팀을 만든다.
+  const [addTeamOpen, setAddTeamOpen] = useState(false);
+  const [newTeamName, setNewTeamName] = useState("");
+
+  // 파트 추가 — "파트·공정 지정" 목록 위 필터 버튼 줄의 + 버튼으로 새 파트(1단계)를 만든다.
+  const [addPartOpen, setAddPartOpen] = useState(false);
+  const [newPartName, setNewPartName] = useState("");
 
   // 파트(1단계) 필터 — 파트를 고르면 그 파트 아래(2단계부터)만 보여준다. 비워두면 전체를 본다.
   const [partFilter, setPartFilter] = useState("");
 
   const tree = useMemo(() => (data ? buildTree(data.processes) : []), [data]);
-  const parts = tree; // 최상위 = 파트
+  // 최상위 = 파트. 선택한 팀 소속 파트만 본다. (팀 정보가 없는 옛 데이터는 생산2팀으로 본다)
+  const parts = useMemo(
+    () => tree.filter((part) => (part.team ?? "team2") === selectedTeam),
+    [tree, selectedTeam],
+  );
 
   const rows = useMemo(() => {
-    if (!partFilter) return flattenTree(tree);
-    const selected = tree.find((part) => part.id === partFilter);
+    if (!partFilter) return flattenTree(parts);
+    const selected = parts.find((part) => part.id === partFilter);
     return selected ? flattenTree([selected]) : [];
-  }, [tree, partFilter]);
+  }, [parts, partFilter]);
+
+  // 자동화 설비도 팀별로 따로 관리한다.
+  const teamEquipments = useMemo(
+    () => (data ? data.equipments.filter((equipment) => equipment.team === selectedTeam) : []),
+    [data, selectedTeam],
+  );
 
   const colorMap = useMemo(
     () => buildColorMap((data?.processes ?? []).map((process) => process.id)),
@@ -124,15 +143,33 @@ export default function ProcessesPage() {
     }
   }
 
-  async function addProcess(event: React.FormEvent) {
+  /** 새 파트(1단계)를 추가한다. (현재 선택된 팀 소속으로 만든다) */
+  async function addPart(event: React.FormEvent) {
     event.preventDefault();
-    await run(async () => {
-      await apiSend("/api/processes", "POST", {
-        name: newName,
-        parentId: newParentId || null,
-      });
-      setNewName("");
-    });
+    const succeeded = await run(() =>
+      apiSend("/api/processes", "POST", { name: newPartName, parentId: null, team: selectedTeam }),
+    );
+    if (succeeded) {
+      setNewPartName("");
+      setAddPartOpen(false);
+    }
+  }
+
+  /** 팀 탭을 바꾸면 그 팀 기준으로 필터·추가 폼을 초기화한다. */
+  function selectTeam(team: string) {
+    setSelectedTeam(team);
+    setPartFilter("");
+    setAddPartOpen(false);
+  }
+
+  /** 새 생산팀을 추가한다. 팀은 개수 제한 없이 늘어날 수 있다. */
+  async function addTeam(event: React.FormEvent) {
+    event.preventDefault();
+    const succeeded = await run(() => apiSend("/api/teams", "POST", { name: newTeamName }));
+    if (succeeded) {
+      setNewTeamName("");
+      setAddTeamOpen(false);
+    }
   }
 
   return (
@@ -150,58 +187,78 @@ export default function ProcessesPage() {
         </p>
       ) : null}
 
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-sm text-ink-muted">팀</span>
+        {data.teams.map((team) => (
+          <button
+            key={team.id}
+            type="button"
+            onClick={() => selectTeam(team.id)}
+            className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+              selectedTeam === team.id
+                ? "bg-ink text-card font-medium"
+                : "border border-line text-ink-soft hover:text-ink"
+            }`}
+          >
+            {team.name}
+          </button>
+        ))}
+        {editor ? (
+          <button
+            type="button"
+            onClick={() => setAddTeamOpen((prev) => !prev)}
+            title="팀 추가"
+            aria-label="팀 추가"
+            className="h-7 w-7 shrink-0 rounded-md border border-line text-sm leading-none text-ink-soft hover:text-ink"
+          >
+            +
+          </button>
+        ) : null}
+      </div>
+
+      {editor && addTeamOpen ? (
+        <form onSubmit={addTeam} className="flex flex-wrap items-center gap-2">
+          <input
+            autoFocus
+            value={newTeamName}
+            onChange={(event) => setNewTeamName(event.target.value)}
+            placeholder="새 팀 이름 (예: 생산4팀)"
+            className="min-w-48 rounded-md border border-line bg-card px-2 py-1.5 text-sm text-ink"
+          />
+          <button
+            type="submit"
+            disabled={busy}
+            className="rounded-md bg-ink px-3 py-1.5 text-sm text-card disabled:opacity-40"
+          >
+            추가
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAddTeamOpen(false);
+              setNewTeamName("");
+            }}
+            className="rounded-md border border-line px-3 py-1.5 text-sm text-ink-soft"
+          >
+            취소
+          </button>
+        </form>
+      ) : null}
+
       {editor ? (
-        <Card
-          title="파트·공정 추가"
-          description="상위를 비워두면 1단계(파트)로, 파트를 고르면 그 아래 공정으로 만들어집니다."
-        >
-          <form onSubmit={addProcess} className="flex flex-wrap items-end gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-ink-muted">상위 공정</label>
-              <select
-                value={newParentId}
-                onChange={(event) => setNewParentId(event.target.value)}
-                className="min-w-56 rounded-md border border-line bg-card px-2 py-2 text-sm text-ink"
-              >
-                <option value="">(최상위 · 파트로 만들기)</option>
-                {flattenTree(tree)
-                  .filter((row) => row.level < MAX_LEVEL)
-                  .map((row) => (
-                    <option key={row.id} value={row.id}>
-                      {"— ".repeat(row.level - 1)}
-                      {row.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-ink-muted">공정 이름</label>
-              <input
-                value={newName}
-                onChange={(event) => setNewName(event.target.value)}
-                placeholder="예: 조립 1공정"
-                className="min-w-56 rounded-md border border-line bg-card px-2 py-2 text-sm text-ink"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={busy}
-              className="rounded-md bg-ink px-4 py-2 text-sm font-medium text-card disabled:opacity-50"
-            >
-              추가
-            </button>
-          </form>
-        </Card>
+        <PartWorkerManager
+          parts={parts}
+          busy={busy}
+          onSave={(partId, workers) => run(() => apiSend(`/api/processes/${partId}`, "PATCH", { workers }))}
+        />
       ) : null}
 
       <Card
-        title="파트·공정 목록"
-        description={`1단계는 파트, 그 아래가 공정입니다(최대 ${MAX_LEVEL}단계). 이름과 표준ST는 언제든 고쳐서 저장할 수 있습니다. 표준ST는 "1개 생산에 필요한 시간(초)"입니다. 파트에는 담당자 목록(콤마로 구분)을, 2단계 공정에는 전담 담당자를 지정할 수 있습니다.`}
+        title="파트·공정 지정"
+        description={`1단계는 파트, 그 아래가 공정입니다(최대 ${MAX_LEVEL}단계). 이름과 표준ST는 언제든 고쳐서 저장할 수 있습니다. 표준ST는 "1개 생산에 필요한 시간(초)"입니다. 2단계 공정에는 전담 담당자(위 "담당자 지정" 표에 적은 이름 중에서)를 지정할 수 있습니다.`}
         action={
-          parts.length > 0 ? (
-            <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1">
+            {parts.length > 0 ? (
               <button
                 type="button"
                 onClick={() => setPartFilter("")}
@@ -213,24 +270,64 @@ export default function ProcessesPage() {
               >
                 전체
               </button>
-              {parts.map((part) => (
-                <button
-                  key={part.id}
-                  type="button"
-                  onClick={() => setPartFilter(part.id)}
-                  className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
-                    partFilter === part.id
-                      ? "bg-ink text-card font-medium"
-                      : "border border-line text-ink-soft hover:text-ink"
-                  }`}
-                >
-                  {part.name}
-                </button>
-              ))}
-            </div>
-          ) : null
+            ) : null}
+            {parts.map((part) => (
+              <button
+                key={part.id}
+                type="button"
+                onClick={() => setPartFilter(part.id)}
+                className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+                  partFilter === part.id
+                    ? "bg-ink text-card font-medium"
+                    : "border border-line text-ink-soft hover:text-ink"
+                }`}
+              >
+                {part.name}
+              </button>
+            ))}
+            {editor ? (
+              <button
+                type="button"
+                onClick={() => setAddPartOpen((prev) => !prev)}
+                title="파트 추가"
+                aria-label="파트 추가"
+                className="h-7 w-7 shrink-0 rounded-md border border-line text-sm leading-none text-ink-soft hover:text-ink"
+              >
+                +
+              </button>
+            ) : null}
+          </div>
         }
       >
+        {editor && addPartOpen ? (
+          <form onSubmit={addPart} className="mb-4 flex flex-wrap items-center gap-2">
+            <input
+              autoFocus
+              value={newPartName}
+              onChange={(event) => setNewPartName(event.target.value)}
+              placeholder="새 파트 이름"
+              className="min-w-48 rounded-md border border-line bg-card px-2 py-1.5 text-sm text-ink"
+            />
+            <button
+              type="submit"
+              disabled={busy}
+              className="rounded-md bg-ink px-3 py-1.5 text-sm text-card disabled:opacity-40"
+            >
+              추가
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAddPartOpen(false);
+                setNewPartName("");
+              }}
+              className="rounded-md border border-line px-3 py-1.5 text-sm text-ink-soft"
+            >
+              취소
+            </button>
+          </form>
+        ) : null}
+
         {rows.length === 0 ? (
           <p className="py-8 text-center text-sm text-ink-muted">등록된 공정이 없습니다.</p>
         ) : (
@@ -250,7 +347,7 @@ export default function ProcessesPage() {
                   color={colorFrom(colorMap, row.id)}
                   childSum={sumChildST(row)}
                   canAddChild={row.level < MAX_LEVEL}
-                  equipments={data.equipments}
+                  equipments={teamEquipments}
                   partWorkers={partWorkers}
                   onSave={(patch) => run(() => apiSend(`/api/processes/${row.id}`, "PATCH", patch))}
                   onAddChild={(name) =>
@@ -267,6 +364,99 @@ export default function ProcessesPage() {
   );
 }
 
+type PartOption = { id: string; name: string; workers?: string };
+
+/**
+ * 담당자 지정 — 파트(1단계)마다 담당자 이름을 콤마로 구분해 한 번에 관리한다.
+ * (파트가 몇 개 안 되니 표 하나로 충분하다는 전제로, 개별 담당자 추가/삭제 화면 없이 이렇게 관리한다)
+ */
+function PartWorkerManager({
+  parts,
+  busy,
+  onSave,
+}: {
+  parts: PartOption[];
+  busy: boolean;
+  onSave: (partId: string, workers: string) => Promise<boolean>;
+}) {
+  const [opened, setOpened] = useState(true);
+
+  return (
+    <Card
+      title="담당자 지정"
+      description="파트마다 담당자 이름을 콤마로 구분해서 한 번에 적어두면, 생산실적 입력·전담 담당자 지정에서 그 목록에서 고를 수 있습니다."
+      action={
+        <button
+          type="button"
+          onClick={() => setOpened((prev) => !prev)}
+          className="rounded-md border border-line px-3 py-1.5 text-sm text-ink-soft hover:text-ink"
+        >
+          {opened ? "접기" : "펼치기"}
+        </button>
+      }
+    >
+      {opened ? (
+        parts.length === 0 ? (
+          <p className="text-sm text-ink-muted">등록된 파트가 없습니다. (위 + 버튼으로 추가)</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-line text-left text-xs text-ink-muted">
+                <th className="pb-2 font-medium">파트</th>
+                <th className="pb-2 font-medium">담당자 (콤마로 구분)</th>
+                <th className="pb-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {parts.map((part) => (
+                <PartWorkerRow key={part.id} part={part} busy={busy} onSave={onSave} />
+              ))}
+            </tbody>
+          </table>
+        )
+      ) : null}
+    </Card>
+  );
+}
+
+function PartWorkerRow({
+  part,
+  busy,
+  onSave,
+}: {
+  part: PartOption;
+  busy: boolean;
+  onSave: (partId: string, workers: string) => Promise<boolean>;
+}) {
+  const saved = part.workers ?? "";
+  const [text, setText] = useState(saved);
+  const changed = text !== saved;
+
+  return (
+    <tr className="border-b border-line/60">
+      <td className="py-2 pr-3 align-top text-ink">{part.name}</td>
+      <td className="py-2 pr-3">
+        <input
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          placeholder="예: 김철수, 이영희, 박민수"
+          className="w-full rounded-md border border-line bg-card px-2 py-1.5 text-sm text-ink"
+        />
+      </td>
+      <td className="py-2 text-right">
+        <button
+          type="button"
+          disabled={busy || !changed}
+          onClick={() => onSave(part.id, joinWorkerNames(text.split(",")))}
+          className="rounded-md bg-ink px-3 py-1.5 text-sm text-card disabled:opacity-40"
+        >
+          저장
+        </button>
+      </td>
+    </tr>
+  );
+}
+
 /** 이 노드의 최상위(파트) id를 찾는다. */
 function findAncestorPartId(node: TreeNode, allProcesses: Process[]): string | null {
   const map = new Map(allProcesses.map((process) => [process.id, process]));
@@ -279,13 +469,12 @@ function findAncestorPartId(node: TreeNode, allProcesses: Process[]): string | n
   return current?.id ?? null;
 }
 
-/** 저장할 때 서버로 보낼 값들 (단계에 따라 workers 또는 worker만 채워 보낸다) */
+/** 저장할 때 서버로 보낼 값들 (2단계 공정에만 dailyTarget/worker를 채워 보낸다) */
 type ProcessPatch = {
   name: string;
   standardST: string;
   equipmentId: string;
   dailyTarget?: string;
-  workers?: string;
   worker?: string;
 };
 
@@ -308,8 +497,16 @@ type RowProps = {
 };
 
 /** 단계별 이름표 (1단계 = 파트, 그 아래는 공정) */
+const LEVEL_LABELS: Record<number, string> = {
+  1: "파트",
+  2: "Assy",
+  3: "단위공정1단계",
+  4: "단위공정2단계",
+  5: "단위공정3단계",
+};
+
 function levelLabel(level: number): string {
-  return level === 1 ? "파트" : `${level}단계 공정`;
+  return LEVEL_LABELS[level] ?? `${level}단계 공정`;
 }
 
 function ProcessRow({
@@ -329,14 +526,12 @@ function ProcessRow({
   const savedST = node.standardST === null ? "" : String(node.standardST);
   const savedEquipmentId = node.equipmentId ?? "";
   const savedDailyTarget = node.dailyTarget == null ? "" : String(node.dailyTarget);
-  const savedWorkersText = node.workers ?? "";
   const savedWorker = node.worker ?? "";
 
   const [name, setName] = useState(savedName);
   const [standardST, setStandardST] = useState(savedST);
   const [equipmentId, setEquipmentId] = useState(savedEquipmentId);
   const [dailyTarget, setDailyTarget] = useState(savedDailyTarget);
-  const [workersText, setWorkersText] = useState(savedWorkersText);
   const [worker, setWorker] = useState(savedWorker);
   const [addOpen, setAddOpen] = useState(false);
   const [childName, setChildName] = useState("");
@@ -347,7 +542,7 @@ function ProcessRow({
     name !== savedName ||
     standardST !== savedST ||
     equipmentId !== savedEquipmentId ||
-    (isPart ? workersText !== savedWorkersText : dailyTarget !== savedDailyTarget || worker !== savedWorker);
+    (!isPart && (dailyTarget !== savedDailyTarget || worker !== savedWorker));
 
   const linkedEquipment = equipments.find((item) => item.id === node.equipmentId);
 
@@ -373,7 +568,7 @@ function ProcessRow({
       name,
       standardST,
       equipmentId,
-      ...(isPart ? { workers: workersText } : { dailyTarget, worker }),
+      ...(isPart ? {} : { dailyTarget, worker }),
     });
   }
 
@@ -422,7 +617,7 @@ function ProcessRow({
           </button>
         ) : null}
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
           {editor ? (
             <>
               {/* 자동화 공정이면 설비를 연결해둔다 (실적 입력 시 자동 선택된다) */}
@@ -463,55 +658,41 @@ function ProcessRow({
               />
               <span className="text-xs text-ink-muted">초/개</span>
 
-              {isPart ? (
+              {/* 일일 목표수량과 전담 담당자는 2단계 공정에만 설정한다 (대시보드 달성 현황에서 쓴다) */}
+              {!isPart && node.level === 2 ? (
                 <>
-                  {/* 파트: 담당자 이름을 콤마로 구분해 한 번에 관리한다 */}
                   <input
-                    value={workersText}
-                    onChange={(event) => setWorkersText(event.target.value)}
-                    placeholder="담당자 (콤마로 구분: 김철수, 이영희)"
-                    className="min-w-56 rounded-md border border-line bg-card px-2 py-1.5 text-xs text-ink"
+                    type="number"
+                    min={0}
+                    step="1"
+                    value={dailyTarget}
+                    onChange={(event) => setDailyTarget(event.target.value)}
+                    placeholder="목표수량"
+                    title="일일 목표수량 (개)"
+                    className="tabular w-24 rounded-md border border-line bg-card px-2 py-1.5 text-right text-sm text-ink"
                   />
-                </>
-              ) : (
-                <>
-                  {/* 일일 목표수량은 2단계 공정에만 설정한다 (대시보드 달성 현황에서 쓴다) */}
-                  {node.level === 2 ? (
-                    <>
-                      <input
-                        type="number"
-                        min={0}
-                        step="1"
-                        value={dailyTarget}
-                        onChange={(event) => setDailyTarget(event.target.value)}
-                        placeholder="목표수량"
-                        title="일일 목표수량 (개)"
-                        className="tabular w-24 rounded-md border border-line bg-card px-2 py-1.5 text-right text-sm text-ink"
-                      />
-                      <span className="text-xs text-ink-muted">개/일</span>
+                  <span className="text-xs text-ink-muted">개/일</span>
 
-                      {/* 전담 담당자는 소속 파트의 담당자 목록 중에서 고른다 */}
-                      <select
-                        value={worker}
-                        onChange={(event) => setWorker(event.target.value)}
-                        title="전담 담당자"
-                        className="max-w-32 rounded-md border border-line bg-card px-2 py-1.5 text-xs text-ink"
-                      >
-                        <option value="">담당자 미지정</option>
-                        {partWorkers.map((name) => (
-                          <option key={name} value={name}>
-                            {name}
-                          </option>
-                        ))}
-                        {/* 이미 지정돼 있던 이름이 파트 목록에서 빠졌으면(이름 수정 등) 그래도 보여준다 */}
-                        {worker && !partWorkers.includes(worker) ? (
-                          <option value={worker}>{worker} (파트 목록에 없음)</option>
-                        ) : null}
-                      </select>
-                    </>
-                  ) : null}
+                  {/* 전담 담당자는 소속 파트의 담당자 목록 중에서 고른다 (위 "담당자 지정" 표에서 관리) */}
+                  <select
+                    value={worker}
+                    onChange={(event) => setWorker(event.target.value)}
+                    title="전담 담당자"
+                    className="max-w-32 rounded-md border border-line bg-card px-2 py-1.5 text-xs text-ink"
+                  >
+                    <option value="">담당자 미지정</option>
+                    {partWorkers.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                    {/* 이미 지정돼 있던 이름이 파트 목록에서 빠졌으면(이름 수정 등) 그래도 보여준다 */}
+                    {worker && !partWorkers.includes(worker) ? (
+                      <option value={worker}>{worker} (파트 목록에 없음)</option>
+                    ) : null}
+                  </select>
                 </>
-              )}
+              ) : null}
 
               <button
                 type="button"

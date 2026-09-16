@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 생산기술1팀 (구 AI 생산관리)
 
-## Getting Started
+생산기술1팀이 생산효율을 검토·관리하기 위한 사내 생산관리 웹 앱입니다.
+표준ST 대비 생산실적을 야마즈미 차트로 비교하고, 자동화 설비별 ROI(투자비 회수)를 추적합니다.
 
-First, run the development server:
+## 핵심 기능
+
+- **표준ST 대비 생산실적 비교** — 공정별 표준ST(1개 생산에 필요한 시간)와 실제 생산시간을 비교해 야마즈미 차트로 보여줍니다.
+- **자동화 설비 ROI(투자비 회수) 계산** — 설비별 투자비용 대비 누적 회수액을 계산식을 직접 설정해 관리합니다.
+- **생산실적 입력** — 담당자 → 파트 → 공정 순으로 골라 실적을 입력하며, 점심·휴식시간은 자동으로 제외해 실제 생산시간을 계산합니다.
+- **팀별 데이터 분리** — 생산1~3팀(필요하면 화면에서 추가 가능)마다 파트·설비·실적을 따로 관리하고, 화면 상단 팀 탭으로 전환해서 봅니다.
+- **일일 목표 달성 현황** — 2단계 공정별 목표수량 대비 달성 여부(정상/지원·연차대응/미달성)를 확인합니다.
+
+## 기술 스택
+
+- [Next.js](https://nextjs.org) (App Router) + TypeScript + Tailwind CSS
+- 데이터 저장: 파일 기반(`data/db.json`) — 아래 "알아두어야 할 점" 참고
+- 배포: [Vercel](https://vercel.com)
+
+## 로컬 실행
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`http://localhost:3000` 에서 확인할 수 있습니다.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 환경 변수
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`.env.example`을 참고해 `.env`를 만드세요. 편집(입력/수정) 비밀번호는 `EDIT_PASSWORD`로 설정합니다(설정하지 않으면 기본값 `1234`가 쓰이므로, 배포 시에는 반드시 별도로 설정해야 합니다).
 
-## Learn More
+## 알아두어야 할 점
 
-To learn more about Next.js, take a look at the following resources:
+- 이 앱은 로그인 없이 조회가 가능한 팀 내부 공유 도구입니다. 편집(입력/수정)만 비밀번호로 보호됩니다.
+- 데이터는 서버의 `data/db.json` 파일에 저장됩니다(간단한 파일 저장 방식). **Vercel 같은 서버리스 환경에서는 파일 시스템이 배포마다 초기화되고 쓰기가 되지 않을 수 있어, 실제 운영에는 별도의 데이터베이스(Supabase 등) 연동이 필요합니다.** 지금은 데모/내부 검토용으로 배포된 상태입니다.
+- Microsoft 365(Azure AD) 계정 로그인 기능은 구현은 되어 있으나 회사 Azure 관리자 동의 대기로 잠시 꺼둔 상태입니다. 자세한 내용은 `CLAUDE.md`를 참고하세요.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 문서
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [PRD.md](./PRD.md) — 기획서(배경, 목표, 범위)
+- [CLAUDE.md](./CLAUDE.md) — 개발 규칙 및 프로젝트 구조

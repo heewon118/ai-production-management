@@ -29,6 +29,7 @@ export async function readDb(): Promise<Database> {
     const parsed = JSON.parse(raw) as Partial<Database>;
     // 파일이 예전 형식이거나 일부가 비어 있어도 앱이 죽지 않도록 기본값을 채운다.
     return {
+      teams: parsed.teams ?? [],
       processes: parsed.processes ?? [],
       equipments: parsed.equipments ?? [],
       records: parsed.records ?? [],

@@ -63,6 +63,15 @@ export function getPartWorkers(processId: string, processes: Process[]): string[
   return parseWorkerNames(top?.workers);
 }
 
+/**
+ * 이 공정이 속한 파트(1단계)의 소속 팀을 구한다.
+ * 팀 정보가 없는(마이그레이션 전) 파트는 생산2팀으로 본다.
+ */
+export function partTeamOf(processId: string, processes: Process[]): string {
+  const top = findTopProcess(processId, processes);
+  return top?.team ?? "team2";
+}
+
 /** 공정의 단계(1~3)를 구한다. */
 export function getProcessLevel(processId: string, processes: Process[]): number {
   const map = toProcessMap(processes);
@@ -338,6 +347,14 @@ export function calcEquipmentStats(
 ): EquipmentStat[] {
   return equipments.map((equipment) => {
     let related = allRecords.filter((record) => record.equipmentId === equipment.id);
+
+    // 누적 회수액 기준일이 있으면, 그 날짜까지의 실적은 이미 시작 시점 누적값에 반영된
+    // 것으로 보고 자동 계산(addedRecovered)에서는 그 다음 날부터의 실적만 센다.
+    if (equipment.initialRecoveredUntil) {
+      const until = equipment.initialRecoveredUntil;
+      related = related.filter((record) => record.date > until);
+    }
+
     if (range) {
       related = related.filter((record) => {
         if (range.from && record.date < range.from) return false;

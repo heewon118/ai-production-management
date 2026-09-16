@@ -4,11 +4,13 @@
  * 생산실적 입력 / 이력 조회
  *
  * 시작시간과 종료시간을 넣으면 점심·휴식시간을 자동으로 빼고 실제 생산시간(분)을 계산한다.
- * 입력 순서: 파트 선택 → 담당자 선택(그 담당자의 전담 공정만 보임) → 공정 → 시간 → 수량.
+ * 입력 순서: 담당자 선택 → 파트 선택(조립/검사/포장 등) → 공정 → 시간 → 수량.
+ * 담당자를 먼저 고르므로, 다른 파트를 지원하는 사람도 자기 이름부터 고른 뒤 지원하는 파트를 설정하면 된다.
  */
 
 import { useMemo, useState } from "react";
 import Card from "@/components/Card";
+import DateField from "@/components/DateField";
 import { apiSend, useAppData } from "@/lib/client";
 import { calcRecordRecovery } from "@/lib/records";
 import {
@@ -18,8 +20,8 @@ import {
   formatNumber,
   getProcessLevel,
   isDescendantOf,
-  joinWorkerNames,
   parseWorkerNames,
+  partTeamOf,
   todayLocal,
 } from "@/lib/stats";
 import type { AssistType, Database, ProductionRecord } from "@/lib/types";
@@ -157,6 +159,9 @@ export default function ProductionPage() {
   const { data, loading, error, reload } = useAppData();
   const [date, setDate] = useState(TODAY);
 
+  // 팀 탭 — 팀마다 실적 입력·이력을 따로 본다. (기존 조립/검사/포장은 생산2팀 소속)
+  const [selectedTeam, setSelectedTeam] = useState<string>("team2");
+
   // 파트를 가장 먼저 고른다.
   const [partId, setPartId] = useState("");
 
@@ -185,22 +190,35 @@ export default function ProductionPage() {
     }
   }, [startTime, endTime]);
 
-  // 파트(1단계) 목록
+  // 파트(1단계) 목록 — 선택한 팀 소속 파트만 본다. (팀 정보가 없는 옛 데이터는 생산2팀으로 본다)
   const parts = useMemo(
-    () => (data ? data.processes.filter((process) => process.parentId === null) : []),
-    [data],
+    () =>
+      data
+        ? data.processes.filter(
+            (process) => process.parentId === null && (process.team ?? "team2") === selectedTeam,
+          )
+        : [],
+    [data, selectedTeam],
   );
   const selectedPartId = partId || parts[0]?.id || "";
 
-  // 선택된 파트에 등록된 담당자 이름 목록
+  // 선택된 파트에 등록된 담당자 이름 목록 (이력 수정 행에서 쓴다)
   const partWorkers = useMemo(() => {
     const part = parts.find((item) => item.id === selectedPartId);
     return parseWorkerNames(part?.workers);
   }, [parts, selectedPartId]);
 
+  // 팀 전체(모든 파트) 담당자 이름 목록 — 담당자를 파트보다 먼저 고를 수 있게 한다.
+  // (한 사람이 여러 파트 담당자 목록에 걸쳐 있을 수 있으므로 중복은 제거한다)
+  const teamWorkers = useMemo(() => {
+    const names = new Set(parts.flatMap((part) => parseWorkerNames(part.workers)));
+    return [...names].sort((a, b) => a.localeCompare(b, "ko"));
+  }, [parts]);
+
   const processOptions = useMemo(() => {
     if (!data) return [];
     return data.processes
+      .filter((process) => partTeamOf(process.id, data.processes) === selectedTeam)
       .map((process) => {
         // 이 공정이 속한 최상위(파트) id를 구한다.
         const map = new Map(data.processes.map((item) => [item.id, item]));
@@ -222,13 +240,15 @@ export default function ProductionPage() {
         };
       })
       .sort((a, b) => a.path.localeCompare(b.path, "ko"));
-  }, [data]);
+  }, [data, selectedTeam]);
 
   /**
-   * 고를 수 있는 공정 목록.
-   * - 선택된 파트 아래 공정만 본다.
-   * - 담당자를 골랐으면, 그 담당자가 전담인 2단계 공정(과, 체크 시 그 하위)만 본다.
-   * - 담당자를 안 골랐으면 기본은 2단계 공정만, "하위공정 별도입력"을 켜면 그 아래 단계까지 본다.
+   * 고를 수 있는 공정 목록. 위에서 고른 파트 안의 공정만 본다 — 지원·연차대응으로 다른 파트를
+   * 돕는 경우에도, 위 "파트" 버튼에서 도와줄 그 파트를 직접 선택했으므로 그 파트 공정만 보이면 된다.
+   * - 담당자를 골랐고 평소 실적(지원·연차대응 체크 안 함)이면, 그 담당자가 전담인 2단계 공정(과,
+   *   체크 시 그 하위)만 본다.
+   * - 담당자를 안 골랐거나 지원·연차대응을 체크했으면 선택한 파트의 전체 공정을 본다.
+   *   기본은 2단계 공정만, "하위공정 별도입력"을 켜면 그 아래 단계까지 본다.
    */
   const ownerOptions = useMemo(
     () =>
@@ -245,7 +265,7 @@ export default function ProductionPage() {
     return processOptions.filter((option) => {
       if (option.topId !== selectedPartId) return false;
 
-      if (worker) {
+      if (worker && !assistType) {
         const isOwn = ownerOptions.some((owner) => owner.id === option.id);
         const isDescendant =
           showSubProcess &&
@@ -260,7 +280,7 @@ export default function ProductionPage() {
       if (!keyword) return true;
       return option.path.toLowerCase().includes(keyword);
     });
-  }, [processOptions, processQuery, showSubProcess, selectedPartId, worker, ownerOptions, data]);
+  }, [processOptions, processQuery, showSubProcess, selectedPartId, worker, assistType, ownerOptions, data]);
 
   const selectedProcess = processOptions.find((option) => option.id === processId);
 
@@ -270,10 +290,22 @@ export default function ProductionPage() {
     setListOpen(false);
   }
 
-  /** 파트를 바꾸면 그 아래 선택들을 초기화한다. */
+  /**
+   * 파트를 바꾸면 공정 선택은 초기화한다.
+   * 담당자는 그대로 둔다 — 다른 파트를 지원하러 온 경우 담당자를 다시 고를 필요가 없다.
+   */
   function selectPart(id: string) {
     setPartId(id);
+    setProcessId("");
+    setProcessQuery("");
+  }
+
+  /** 팀 탭을 바꾸면 그 팀 기준으로 파트부터 다시 고르게 한다. */
+  function selectTeam(team: string) {
+    setSelectedTeam(team);
+    setPartId("");
     setWorker("");
+    setAssistType("");
     setProcessId("");
     setProcessQuery("");
   }
@@ -289,22 +321,25 @@ export default function ProductionPage() {
   const [historyWorker, setHistoryWorker] = useState("");
   const [historyProcessId, setHistoryProcessId] = useState("");
 
+  // 선택한 팀 소속 공정의 실적만 이력에 본다.
+  const teamRecords = useMemo(() => {
+    if (!data) return [];
+    return data.records.filter((record) => partTeamOf(record.processId, data.processes) === selectedTeam);
+  }, [data, selectedTeam]);
+
   // 이력에 실제로 등장하는 담당자·공정만 필터 목록에 올린다.
   const historyWorkerOptions = useMemo(() => {
-    if (!data) return [];
-    const names = new Set(data.records.map((record) => record.worker).filter((name): name is string => !!name));
+    const names = new Set(teamRecords.map((record) => record.worker).filter((name): name is string => !!name));
     return [...names].sort((a, b) => a.localeCompare(b, "ko"));
-  }, [data]);
+  }, [teamRecords]);
 
   const historyProcessOptions = useMemo(() => {
-    if (!data) return [];
-    const usedIds = new Set(data.records.map((record) => record.processId));
+    const usedIds = new Set(teamRecords.map((record) => record.processId));
     return processOptions.filter((option) => usedIds.has(option.id));
-  }, [data, processOptions]);
+  }, [teamRecords, processOptions]);
 
   const records = useMemo(() => {
-    if (!data) return [];
-    return [...data.records]
+    return [...teamRecords]
       .filter((record) => {
         if (historyFrom && record.date < historyFrom) return false;
         if (historyTo && record.date > historyTo) return false;
@@ -315,7 +350,7 @@ export default function ProductionPage() {
       .sort((a, b) =>
         a.date === b.date ? b.createdAt.localeCompare(a.createdAt) : b.date.localeCompare(a.date),
       );
-  }, [data, historyFrom, historyTo, historyWorker, historyProcessId]);
+  }, [teamRecords, historyFrom, historyTo, historyWorker, historyProcessId]);
 
   if (loading) return <p className="py-12 text-center text-sm text-ink-muted">불러오는 중…</p>;
   if (error || !data)
@@ -374,13 +409,23 @@ export default function ProductionPage() {
         </p>
       ) : null}
 
-      {editor ? (
-        <PartWorkerManager
-          parts={parts}
-          busy={busy}
-          onSave={(id, workers) => run(() => apiSend(`/api/processes/${id}`, "PATCH", { workers }))}
-        />
-      ) : null}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-sm text-ink-muted">팀</span>
+        {data.teams.map((team) => (
+          <button
+            key={team.id}
+            type="button"
+            onClick={() => selectTeam(team.id)}
+            className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+              selectedTeam === team.id
+                ? "bg-ink text-card font-medium"
+                : "border border-line text-ink-soft hover:text-ink"
+            }`}
+          >
+            {team.name}
+          </button>
+        ))}
+      </div>
 
       {editor ? (
         <Card
@@ -388,76 +433,93 @@ export default function ProductionPage() {
           description={`근무시간 ${WORK_START}~${WORK_END} 기준이며, 점심·휴식시간은 자동으로 빠집니다. 시간은 선택창으로도, 숫자 타이핑으로도 입력할 수 있습니다.`}
         >
           {parts.length === 0 ? (
-            <p className="text-sm text-ink-muted">먼저 파트를 등록해주세요. (공정·표준ST 메뉴)</p>
+            <p className="text-sm text-ink-muted">먼저 파트를 등록해주세요. (공정 설정 메뉴)</p>
           ) : (
             <form onSubmit={submit} className="space-y-4">
-              {/* 파트를 가장 먼저 고른다 */}
-              <div className="flex flex-wrap gap-1">
-                {parts.map((part) => (
-                  <button
-                    key={part.id}
-                    type="button"
-                    onClick={() => selectPart(part.id)}
-                    className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
-                      part.id === selectedPartId
-                        ? "bg-ink text-card font-medium"
-                        : "border border-line text-ink-soft hover:text-ink"
-                    }`}
-                  >
-                    {part.name}
-                  </button>
-                ))}
+              {/* 담당자를 가장 먼저 고른다 — 다른 파트를 지원하는 사람도 자기 이름부터 고른다 */}
+              <label className="flex flex-col gap-1">
+                <span className="text-xs text-ink-muted">담당자</span>
+                <select
+                  value={worker}
+                  onChange={(event) => {
+                    setWorker(event.target.value);
+                    setProcessId("");
+                    setProcessQuery("");
+                  }}
+                  className="rounded-md border border-line bg-card px-2 py-2 text-sm text-ink"
+                >
+                  <option value="">선택 안 함 (전체 공정 보기)</option>
+                  {teamWorkers.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+                {teamWorkers.length === 0 ? (
+                  <span className="text-xs text-ink-muted">
+                    등록된 담당자가 없습니다. 공정 설정 메뉴에서 추가해주세요.
+                  </span>
+                ) : null}
+              </label>
+
+              {/* 담당자를 고른 다음, 어느 파트(조립/검사/포장 등) 공정인지 정한다 */}
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-ink-muted">파트</span>
+                <div className="flex flex-wrap gap-1">
+                  {parts.map((part) => (
+                    <button
+                      key={part.id}
+                      type="button"
+                      onClick={() => selectPart(part.id)}
+                      className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+                        part.id === selectedPartId
+                          ? "bg-ink text-card font-medium"
+                          : "border border-line text-ink-soft hover:text-ink"
+                      }`}
+                    >
+                      {part.name}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {/* 담당자를 공정보다 먼저 고른다 */}
-                <label className="flex flex-col gap-1">
-                  <span className="text-xs text-ink-muted">담당자</span>
-                  <select
-                    value={worker}
-                    onChange={(event) => {
-                      setWorker(event.target.value);
-                      setProcessId("");
-                      setProcessQuery("");
-                    }}
-                    className="rounded-md border border-line bg-card px-2 py-2 text-sm text-ink"
-                  >
-                    <option value="">선택 안 함 (전체 공정 보기)</option>
-                    {partWorkers.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
-                  {partWorkers.length === 0 ? (
-                    <span className="text-xs text-ink-muted">
-                      이 파트에 등록된 담당자가 없습니다. 위 담당자 지정에서 추가해주세요.
-                    </span>
-                  ) : null}
-                </label>
-
-                <label className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1">
                   <span className="text-xs text-ink-muted">
                     지원 구분{worker ? "" : " (담당자를 고르면 선택할 수 있어요)"}
                   </span>
-                  <select
-                    value={assistType}
-                    onChange={(event) => setAssistType(event.target.value as typeof assistType)}
-                    disabled={!worker}
-                    className="rounded-md border border-line bg-card px-2 py-2 text-sm text-ink disabled:opacity-50"
-                  >
-                    <option value="">평소 실적 (본인)</option>
-                    <option value="support">생산지원</option>
-                    <option value="leave">연차대응</option>
-                  </select>
-                </label>
+                  <div className="flex items-center gap-3 rounded-md border border-line bg-card px-2 py-2">
+                    <label className="flex items-center gap-1.5 text-sm text-ink">
+                      <input
+                        type="checkbox"
+                        checked={assistType === "support"}
+                        disabled={!worker}
+                        onChange={(event) => setAssistType(event.target.checked ? "support" : "")}
+                      />
+                      생산지원
+                    </label>
+                    <label className="flex items-center gap-1.5 text-sm text-ink">
+                      <input
+                        type="checkbox"
+                        checked={assistType === "leave"}
+                        disabled={!worker}
+                        onChange={(event) => setAssistType(event.target.checked ? "leave" : "")}
+                      />
+                      연차대응
+                    </label>
+                  </div>
+                  {worker && assistType ? (
+                    <span className="text-xs text-ink-muted">
+                      이 파트의 다른 공정도 고를 수 있도록 아래 공정 목록이 파트 전체로 넓어집니다.
+                    </span>
+                  ) : null}
+                </div>
 
                 <label className="flex flex-col gap-1">
                   <span className="text-xs text-ink-muted">작업 일자</span>
-                  <input
-                    type="date"
+                  <DateField
                     value={date}
-                    onChange={(event) => setDate(event.target.value)}
+                    onChange={setDate}
                     className="rounded-md border border-line bg-card px-2 py-2 text-sm text-ink"
                   />
                 </label>
@@ -466,7 +528,8 @@ export default function ProductionPage() {
                 <div className="flex flex-col gap-1 lg:col-span-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-xs text-ink-muted">
-                      공정 (이름을 입력해 검색){worker ? " — 이 담당자의 공정만 보입니다" : ""}
+                      공정 (이름을 입력해 검색)
+                      {worker && !assistType ? " — 이 담당자의 공정만 보입니다" : ""}
                     </span>
                     <label className="flex items-center gap-1.5 text-xs text-ink-soft">
                       <input
@@ -507,7 +570,7 @@ export default function ProductionPage() {
                           {visibleOptions.length === 0 ? (
                             <li className="px-3 py-2 text-sm text-ink-muted">
                               해당하는 공정이 없습니다.
-                              {worker
+                              {worker && !assistType
                                 ? " (이 담당자에게 전담 공정이 지정돼 있는지 확인해주세요)"
                                 : !showSubProcess
                                   ? " (하위공정 별도입력을 켜보세요)"
@@ -627,17 +690,15 @@ export default function ProductionPage() {
         action={
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <label className="text-ink-muted">날짜</label>
-            <input
-              type="date"
+            <DateField
               value={historyFrom}
-              onChange={(event) => setHistoryFrom(event.target.value)}
+              onChange={setHistoryFrom}
               className="rounded-md border border-line bg-card px-2 py-1 text-ink"
             />
             <span className="text-ink-muted">~</span>
-            <input
-              type="date"
+            <DateField
               value={historyTo}
-              onChange={(event) => setHistoryTo(event.target.value)}
+              onChange={setHistoryTo}
               className="rounded-md border border-line bg-card px-2 py-1 text-ink"
             />
 
@@ -738,99 +799,6 @@ export default function ProductionPage() {
         )}
       </Card>
     </div>
-  );
-}
-
-type PartOption = { id: string; name: string; workers?: string };
-
-/**
- * 담당자 지정 — 파트(1단계)마다 담당자 이름을 콤마로 구분해 한 번에 관리한다.
- * (파트가 몇 개 안 되니 표 하나로 충분하다는 전제로, 개별 담당자 추가/삭제 화면 없이 이렇게 관리한다)
- */
-function PartWorkerManager({
-  parts,
-  busy,
-  onSave,
-}: {
-  parts: PartOption[];
-  busy: boolean;
-  onSave: (partId: string, workers: string) => Promise<boolean>;
-}) {
-  const [opened, setOpened] = useState(true);
-
-  return (
-    <Card
-      title="담당자 지정"
-      description="파트마다 담당자 이름을 콤마로 구분해서 한 번에 적어두면, 생산실적 입력할 때 그 목록에서 고를 수 있습니다."
-      action={
-        <button
-          type="button"
-          onClick={() => setOpened((prev) => !prev)}
-          className="rounded-md border border-line px-3 py-1.5 text-sm text-ink-soft hover:text-ink"
-        >
-          {opened ? "접기" : "펼치기"}
-        </button>
-      }
-    >
-      {opened ? (
-        parts.length === 0 ? (
-          <p className="text-sm text-ink-muted">등록된 파트가 없습니다. (공정·표준ST 메뉴에서 추가)</p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs text-ink-muted">
-                <th className="pb-2 font-medium">파트</th>
-                <th className="pb-2 font-medium">담당자 (콤마로 구분)</th>
-                <th className="pb-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {parts.map((part) => (
-                <PartWorkerRow key={part.id} part={part} busy={busy} onSave={onSave} />
-              ))}
-            </tbody>
-          </table>
-        )
-      ) : null}
-    </Card>
-  );
-}
-
-function PartWorkerRow({
-  part,
-  busy,
-  onSave,
-}: {
-  part: PartOption;
-  busy: boolean;
-  onSave: (partId: string, workers: string) => Promise<boolean>;
-}) {
-  const saved = part.workers ?? "";
-  const [text, setText] = useState(saved);
-  const changed = text !== saved;
-
-  return (
-    <tr className="border-b border-line/60">
-      <td className="py-2 pr-3 align-top text-ink">{part.name}</td>
-      <td className="py-2 pr-3">
-        <input
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          placeholder="예: 김철수, 이영희, 박민수"
-          className="w-full rounded-md border border-line bg-card px-2 py-1.5 text-sm text-ink"
-        />
-      </td>
-      <td className="py-2 text-right">
-        <button
-          type="button"
-          disabled={busy || !changed}
-          onClick={() => onSave(part.id, joinWorkerNames(text.split(",")))}
-          className="rounded-md bg-ink px-3 py-1.5 text-sm text-card disabled:opacity-40"
-        >
-          저장
-        </button>
-      </td>
-    </tr>
   );
 }
 
@@ -942,10 +910,9 @@ function RecordRow({
     return (
       <tr className="border-b border-line/60 bg-page/60">
         <td className="py-2 pr-3">
-          <input
-            type="date"
+          <DateField
             value={draftDate}
-            onChange={(event) => setDraftDate(event.target.value)}
+            onChange={setDraftDate}
             className="rounded-md border border-line bg-card px-2 py-1 text-ink"
           />
         </td>

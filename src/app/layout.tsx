@@ -3,7 +3,7 @@ import Header from "@/components/Header";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI 생산관리",
+  title: "생산기술1팀",
   description: "표준ST 대비 생산실적 비교와 자동화 설비 ROI(투자비 회수)를 확인하는 사내 도구",
 };
 

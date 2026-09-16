@@ -19,9 +19,11 @@ export async function POST(request: NextRequest) {
   if (denied) return denied;
 
   try {
-    const body = (await request.json()) as { name?: unknown; parentId?: unknown };
+    const body = (await request.json()) as { name?: unknown; parentId?: unknown; team?: unknown };
     const name = parseRequiredString(body.name, "공정 이름");
     const parentId = typeof body.parentId === "string" && body.parentId ? body.parentId : null;
+    // [1단계(파트) 전용] 이 파트가 속할 생산팀. 하위 공정은 상위 파트의 팀을 그대로 따르므로 필요 없다.
+    const team = parentId === null ? parseRequiredString(body.team, "소속 팀") : undefined;
 
     const created = await updateDb((db) => {
       if (parentId) {
@@ -35,9 +37,17 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      const duplicated = db.processes.some(
-        (process) => process.parentId === parentId && process.name === name,
-      );
+      if (parentId === null && !db.teams.some((item) => item.id === team)) {
+        throw new Error("존재하지 않는 팀입니다.");
+      }
+
+      // 파트(1단계)는 같은 팀 안에서만, 하위 공정은 같은 상위 공정 아래에서만 중복 이름을 막는다.
+      const duplicated =
+        parentId === null
+          ? db.processes.some(
+              (process) => process.parentId === null && process.team === team && process.name === name,
+            )
+          : db.processes.some((process) => process.parentId === parentId && process.name === name);
       if (duplicated) {
         throw new Error("같은 위치에 같은 이름의 공정이 이미 있습니다.");
       }
@@ -46,6 +56,7 @@ export async function POST(request: NextRequest) {
         id: createId(),
         name,
         parentId,
+        team,
         standardST: null,
         equipmentId: null,
         dailyTarget: null,

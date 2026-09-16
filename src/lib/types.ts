@@ -4,6 +4,15 @@
  */
 
 /**
+ * 생산팀. 파트(1단계)·자동화 설비가 어느 생산팀 소속인지 표시한다.
+ * 팀은 화면(공정 설정 등)에서 + 버튼으로 자유롭게 추가할 수 있다 (고정된 개수가 아니다).
+ */
+export type TeamRecord = {
+  id: string;
+  name: string;
+};
+
+/**
  * 공정
  * 계층 구조: 1단계(assy 단위) → 2단계 → 3단계까지 가질 수 있다.
  * parentId가 null이면 최상위(assy) 공정, 즉 "파트"다.
@@ -12,6 +21,8 @@ export type Process = {
   id: string;
   name: string;
   parentId: string | null;
+  /** [1단계(파트) 전용] 이 파트가 속한 생산팀 id (TeamRecord.id 참조). */
+  team?: string;
   /** 표준ST = 1개 생산에 필요한 시간(초). 아직 등록하지 않았으면 null */
   standardST: number | null;
   /**
@@ -50,10 +61,19 @@ export type FormulaVariable = {
 export type Equipment = {
   id: string;
   name: string;
+  /** 이 설비가 속한 생산팀 id (설비도 팀별로 따로 관리한다. TeamRecord.id 참조) */
+  team: string;
   /** 설비 도입비용 (이 금액만큼 회수하면 본전) */
   investmentCost: number;
   /** 시작 시점에 이미 회수했던 누적 금액 (초기값) */
   initialRecovered: number;
+  /**
+   * 위 누적 금액이 반영된 기준일(YYYY-MM-DD). 아직 실적 입력이 다 끝나지 않아
+   * 정확한 자동 계산이 어려운 기간을, 이 날짜까지는 직접 입력한 누적 금액으로 대신 보고
+   * 그 다음 날부터의 생산실적만 자동으로 계산해서 더한다. 설정하지 않았으면(null)
+   * 모든 실적을 계산해서 더한다.
+   */
+  initialRecoveredUntil?: string | null;
   /** 회수액 계산식 — 사용자가 웹 화면에서 직접 입력한다 (코드에 하드코딩하지 않음) */
   formula: string;
   /** 계산식 안에서 쓰는 사용자 정의 값들 */
@@ -102,6 +122,7 @@ export type ProductionRecord = {
 
 /** JSON 파일에 저장되는 전체 데이터 구조 */
 export type Database = {
+  teams: TeamRecord[];
   processes: Process[];
   equipments: Equipment[];
   records: ProductionRecord[];
@@ -109,6 +130,7 @@ export type Database = {
 
 /** 빈 데이터 (파일이 없을 때 사용) */
 export const EMPTY_DB: Database = {
+  teams: [],
   processes: [],
   equipments: [],
   records: [],

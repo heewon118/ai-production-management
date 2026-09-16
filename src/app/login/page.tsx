@@ -38,7 +38,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-[70vh] items-center justify-center px-4">
       <div className="w-full max-w-sm rounded-lg border border-line bg-card p-8 text-center">
-        <h1 className="text-lg font-semibold text-ink">AI 생산관리</h1>
+        <h1 className="text-lg font-semibold text-ink">생산기술1팀</h1>
         <p className="mt-2 text-sm text-ink-soft">
           회사 Microsoft 365 계정으로 로그인해주세요.
         </p>

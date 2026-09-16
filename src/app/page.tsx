@@ -10,6 +10,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import Card from "@/components/Card";
+import DateField from "@/components/DateField";
 import YamazumiChart from "@/components/YamazumiChart";
 import { useAppData } from "@/lib/client";
 import { buildColorMap, colorFrom } from "@/lib/colors";
@@ -25,6 +26,7 @@ import {
   formatNumber,
   getMonthRange,
   getWeekRange,
+  partTeamOf,
   yesterdayLocal,
 } from "@/lib/stats";
 
@@ -56,6 +58,15 @@ export default function DashboardPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [partId, setPartId] = useState("");
+
+  // 팀 탭 — 팀마다 대시보드를 따로 본다. (기존 조립/검사/포장은 생산2팀 소속)
+  const [selectedTeam, setSelectedTeam] = useState<string>("team2");
+
+  /** 팀 탭을 바꾸면 파트 선택을 그 팀 기준으로 다시 고르게 한다. */
+  function selectTeam(team: string) {
+    setSelectedTeam(team);
+    setPartId("");
+  }
   /**
    * 여유율(%) — 표준ST는 실제로 걸리는 시간(리얼타임)이므로 여기에 여유를 더해 목표선으로 본다.
    * 브라우저에 기억해두고 다음에 들어와도 같은 값으로 보여준다.
@@ -78,10 +89,15 @@ export default function DashboardPage() {
     }
   }
 
-  // 1단계(파트) 목록 — 야마즈미 차트를 파트별로 나눠 보기 위해 쓴다.
+  // 1단계(파트) 목록 — 야마즈미 차트를 파트별로 나눠 보기 위해 쓴다. 선택한 팀 소속 파트만 본다.
   const parts = useMemo(
-    () => (data ? data.processes.filter((process) => process.parentId === null) : []),
-    [data],
+    () =>
+      data
+        ? data.processes.filter(
+            (process) => process.parentId === null && (process.team ?? "team2") === selectedTeam,
+          )
+        : [],
+    [data, selectedTeam],
   );
 
   // 아직 고른 파트가 없으면 첫 번째 파트를 본다.
@@ -142,8 +158,16 @@ export default function DashboardPage() {
   const view = useMemo(() => {
     if (!data) return null;
 
+    // 선택한 팀 소속 공정·실적·설비만 본다.
+    const teamRecords = data.records.filter(
+      (record) => partTeamOf(record.processId, data.processes) === selectedTeam,
+    );
+    const teamEquipments = data.equipments.filter(
+      (equipment) => (equipment.team ?? "team2") === selectedTeam,
+    );
+
     // 표준ST 비교는 "기간 평균" 기준
-    const periodRecords = filterByPeriod(data.records, from, to);
+    const periodRecords = filterByPeriod(teamRecords, from, to);
     const processStats = calcProcessStats(periodRecords, data.processes);
     // 야마즈미는 고른 파트 아래 2단계 공정을 가로축으로 그린다.
     const yamazumi = selectedPartId
@@ -153,8 +177,8 @@ export default function DashboardPage() {
     // 자동화 설비 효과금액은 기본 "전체 누적"이며, 기간을 지정하면 그 기간만 본다.
     // 저장된 값이 아니라 항상 지금 설비 계산식으로 다시 계산한다.
     const equipmentStats = calcEquipmentStats(
-      data.records,
-      data.equipments,
+      teamRecords,
+      teamEquipments,
       data.processes,
       equipmentFrom || equipmentTo ? { from: equipmentFrom, to: equipmentTo } : undefined,
     );
@@ -162,7 +186,7 @@ export default function DashboardPage() {
     const colorMap = buildColorMap(data.processes.map((process) => process.id));
 
     return { periodRecords, processStats, yamazumi, equipmentStats, colorMap };
-  }, [data, from, to, selectedPartId, equipmentFrom, equipmentTo]);
+  }, [data, from, to, selectedPartId, selectedTeam, equipmentFrom, equipmentTo]);
 
   if (loading) {
     return <p className="py-12 text-center text-sm text-ink-muted">불러오는 중…</p>;
@@ -171,11 +195,31 @@ export default function DashboardPage() {
     return <p className="py-12 text-center text-sm text-critical">{error ?? "오류가 발생했습니다."}</p>;
   }
 
-  const hasAnything = data.processes.length > 0 || data.records.length > 0;
+  const hasAnything =
+    parts.length > 0 ||
+    data.records.some((record) => partTeamOf(record.processId, data.processes) === selectedTeam);
   const buffer = Number(bufferPercent) || 0;
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-sm text-ink-muted">팀</span>
+        {data.teams.map((team) => (
+          <button
+            key={team.id}
+            type="button"
+            onClick={() => selectTeam(team.id)}
+            className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+              selectedTeam === team.id
+                ? "bg-ink text-card font-medium"
+                : "border border-line text-ink-soft hover:text-ink"
+            }`}
+          >
+            {team.name}
+          </button>
+        ))}
+      </div>
+
       {!hasAnything ? (
         <div className="rounded-xl border border-line bg-card p-6">
           <h2 className="text-base font-semibold text-ink">처음 시작하기</h2>
@@ -184,15 +228,15 @@ export default function DashboardPage() {
               1. 오른쪽 위 <strong>편집하기</strong>에 비밀번호를 입력해 편집 모드로 바꿉니다.
             </li>
             <li>
-              2. <Link href="/processes" className="underline">공정·표준ST</Link> 에서 공정을 등록하고
+              2. <Link href="/processes" className="underline">공정 설정</Link> 에서 공정을 등록하고
               표준ST(초/개)를 입력합니다.
             </li>
             <li>
-              3. <Link href="/equipments" className="underline">자동화 설비</Link> 에서 설비와 효과금액
+              3. <Link href="/equipments" className="underline">자동화 설비 설정</Link> 에서 설비와 효과금액
               계산식을 등록합니다. (선택)
             </li>
             <li>
-              4. <Link href="/production" className="underline">생산실적</Link> 에서 실적을 입력하면 이
+              4. <Link href="/production" className="underline">생산실적입력</Link> 에서 실적을 입력하면 이
               화면에 결과가 나타납니다.
             </li>
           </ol>
@@ -205,31 +249,31 @@ export default function DashboardPage() {
         action={
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <label className="text-ink-muted">실적 입력 시점</label>
-            <input
-              type="date"
+            <DateField
               value={equipmentFrom}
-              onChange={(event) => setEquipmentFrom(event.target.value)}
+              onChange={setEquipmentFrom}
               className="rounded-md border border-line bg-card px-2 py-1 text-ink"
             />
             <span className="text-ink-muted">~</span>
-            <input
-              type="date"
+            <DateField
               value={equipmentTo}
-              onChange={(event) => setEquipmentTo(event.target.value)}
+              onChange={setEquipmentTo}
               className="rounded-md border border-line bg-card px-2 py-1 text-ink"
             />
-            {equipmentFrom || equipmentTo ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setEquipmentFrom("");
-                  setEquipmentTo("");
-                }}
-                className="rounded-md border border-line px-2 py-1 text-ink-soft"
-              >
-                전체
-              </button>
-            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                setEquipmentFrom("");
+                setEquipmentTo("");
+              }}
+              className={`rounded-md px-2 py-1 transition-colors ${
+                equipmentFrom || equipmentTo
+                  ? "border border-line text-ink-soft hover:text-ink"
+                  : "bg-ink text-card font-medium"
+              }`}
+            >
+              전체기간
+            </button>
           </div>
         }
       >
@@ -303,10 +347,9 @@ export default function DashboardPage() {
                   {period === "day" ? "일간" : period === "week" ? "주간" : "월간"}
                 </button>
               ))}
-              <input
-                type="date"
+              <DateField
                 value={achievementDate}
-                onChange={(event) => setAchievementDate(event.target.value)}
+                onChange={setAchievementDate}
                 className="rounded-md border border-line bg-card px-2 py-1 text-ink"
               />
             </div>
@@ -314,7 +357,7 @@ export default function DashboardPage() {
         >
           {secondLevelProcesses.length === 0 ? (
             <p className="py-8 text-center text-sm text-ink-muted">
-              이 파트에 2단계 공정이 없습니다. 공정·표준ST 화면에서 만들어주세요.
+              이 파트에 2단계 공정이 없습니다. 공정 설정 화면에서 만들어주세요.
             </p>
           ) : achievementPeriod === "day" ? (
             <div className="grid gap-3 sm:grid-cols-2">
@@ -417,31 +460,31 @@ export default function DashboardPage() {
               <span className="text-ink-muted">|</span>
 
               <label className="text-ink-muted">기간</label>
-              <input
-                type="date"
+              <DateField
                 value={from}
-                onChange={(event) => setFrom(event.target.value)}
+                onChange={setFrom}
                 className="rounded-md border border-line bg-card px-2 py-1 text-ink"
               />
               <span className="text-ink-muted">~</span>
-              <input
-                type="date"
+              <DateField
                 value={to}
-                onChange={(event) => setTo(event.target.value)}
+                onChange={setTo}
                 className="rounded-md border border-line bg-card px-2 py-1 text-ink"
               />
-              {from || to ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFrom("");
-                    setTo("");
-                  }}
-                  className="rounded-md border border-line px-2 py-1 text-ink-soft"
-                >
-                  전체
-                </button>
-              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setFrom("");
+                  setTo("");
+                }}
+                className={`rounded-md px-2 py-1 transition-colors ${
+                  from || to
+                    ? "border border-line text-ink-soft hover:text-ink"
+                    : "bg-ink text-card font-medium"
+                }`}
+              >
+                전체기간
+              </button>
             </div>
           }
         >

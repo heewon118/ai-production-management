@@ -5,7 +5,7 @@
 import { isEditor } from "./auth";
 
 // 입력값 검증 함수는 화면에서도 쓰기 때문에 별도 파일에 두고, 여기서 다시 내보낸다.
-export { parsePositiveNumber, parseRequiredString } from "./validate";
+export { parseOptionalDate, parsePositiveNumber, parseRequiredString } from "./validate";
 
 /** 성공 응답 */
 export function ok<T>(data: T, status = 200): Response {

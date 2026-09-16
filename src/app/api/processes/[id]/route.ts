@@ -1,13 +1,7 @@
 /** 공정 수정 / 삭제 */
 
 import type { NextRequest } from "next/server";
-import {
-  ok,
-  parsePositiveNumber,
-  parseRequiredString,
-  requireEditor,
-  toErrorResponse,
-} from "@/lib/api";
+import { ok, parsePositiveNumber, parseRequiredString, requireEditor, toErrorResponse } from "@/lib/api";
 import { updateDb } from "@/lib/storage";
 
 /** 공정 이름이나 표준ST를 수정한다. */
@@ -19,6 +13,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const { id } = await params;
     const body = (await request.json()) as {
       name?: unknown;
+      team?: unknown;
       standardST?: unknown;
       equipmentId?: unknown;
       dailyTarget?: unknown;
@@ -42,6 +37,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           throw new Error("같은 위치에 같은 이름의 공정이 이미 있습니다.");
         }
         process.name = name;
+      }
+
+      // [1단계(파트) 전용] 소속 팀을 바꾼다.
+      if ("team" in body && process.parentId === null) {
+        const team = parseRequiredString(body.team, "소속 팀");
+        if (!db.teams.some((item) => item.id === team)) {
+          throw new Error("존재하지 않는 팀입니다.");
+        }
+        process.team = team;
       }
 
       // 자동화 설비 연결 (빈 값이면 연결 해제)

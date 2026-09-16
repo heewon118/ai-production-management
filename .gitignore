@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -45,3 +46,6 @@ next-env.d.ts
 
 # Supabase CLI가 로그인 시 로컬에 만드는 캐시 파일
 /supabase/.temp
+
+# bkit 플러그인이 로컬에 남기는 감사로그·체크포인트 등 내부 상태 (프로젝트 코드 아님)
+/.bkit

@@ -1,7 +1,14 @@
 /** 자동화 설비 수정 / 삭제 */
 
 import type { NextRequest } from "next/server";
-import { ok, parsePositiveNumber, requireEditor, toErrorResponse } from "@/lib/api";
+import {
+  ok,
+  parseOptionalDate,
+  parsePositiveNumber,
+  parseRequiredString,
+  requireEditor,
+  toErrorResponse,
+} from "@/lib/api";
 import { parseVariables, validateFormula } from "@/lib/roi";
 import { updateDb } from "@/lib/storage";
 
@@ -26,6 +33,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if (typeof body.name === "string" && body.name.trim()) {
         equipment.name = body.name.trim();
       }
+      if ("team" in body) {
+        const team = parseRequiredString(body.team, "소속 팀");
+        if (!db.teams.some((item) => item.id === team)) {
+          throw new Error("존재하지 않는 팀입니다.");
+        }
+        equipment.team = team;
+      }
       if ("investmentCost" in body) {
         equipment.investmentCost = parsePositiveNumber(body.investmentCost, "설비 도입비용", true);
       }
@@ -34,6 +48,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           body.initialRecovered,
           "시작 시점 누적 회수액",
           true,
+        );
+      }
+      if ("initialRecoveredUntil" in body) {
+        equipment.initialRecoveredUntil = parseOptionalDate(
+          body.initialRecoveredUntil,
+          "누적 회수액 기준일",
         );
       }
       if ("variables" in body) {

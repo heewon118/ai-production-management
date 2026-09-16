@@ -5,8 +5,9 @@
  * 설비마다 투자비용 / 시작 시점 누적 회수액 / 회수액 계산식을 직접 설정한다.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Card from "@/components/Card";
+import DateField from "@/components/DateField";
 import { apiSend, useAppData } from "@/lib/client";
 import { extractVariables } from "@/lib/formula";
 import { BUILT_IN_VARIABLES } from "@/lib/roi";
@@ -14,22 +15,29 @@ import { formatMoney } from "@/lib/stats";
 import type { Equipment, FormulaVariable } from "@/lib/types";
 
 /** 새 설비를 만들 때 쓰는 기본값 (사용자가 화면에서 바로 고칠 수 있다) */
-const DEFAULT_FORM = {
-  name: "",
-  investmentCost: "",
-  initialRecovered: "0",
-  // 효과금액 = 생산수량 × 임률 × 세이브시간(분)
-  formula: "수량 * 임률 * 세이브시간",
-  variables: [
-    { name: "임률", value: "389" },
-    { name: "세이브시간", value: "0" },
-  ],
-};
+function defaultForm(team: string) {
+  return {
+    name: "",
+    team,
+    investmentCost: "",
+    initialRecovered: "0",
+    initialRecoveredUntil: "",
+    // 효과금액 = 생산수량 × 임률 × 세이브시간(분)
+    formula: "수량 * 임률 * 세이브시간",
+    variables: [
+      { name: "임률", value: "389" },
+      { name: "세이브시간", value: "0" },
+    ],
+  };
+}
 
 type FormState = {
   name: string;
+  team: string;
   investmentCost: string;
   initialRecovered: string;
+  /** 이 날짜까지는 위 누적 회수액으로 대신하고, 그 다음 날부터의 실적만 자동 계산한다. 빈 값이면 전체 계산. */
+  initialRecoveredUntil: string;
   formula: string;
   variables: { name: string; value: string }[];
 };
@@ -37,8 +45,10 @@ type FormState = {
 function toFormState(equipment: Equipment): FormState {
   return {
     name: equipment.name,
+    team: equipment.team ?? "team2",
     investmentCost: String(equipment.investmentCost),
     initialRecovered: String(equipment.initialRecovered),
+    initialRecoveredUntil: equipment.initialRecoveredUntil ?? "",
     formula: equipment.formula,
     variables: equipment.variables.map((variable) => ({
       name: variable.name,
@@ -50,8 +60,10 @@ function toFormState(equipment: Equipment): FormState {
 function toPayload(form: FormState) {
   return {
     name: form.name,
+    team: form.team,
     investmentCost: form.investmentCost,
     initialRecovered: form.initialRecovered,
+    initialRecoveredUntil: form.initialRecoveredUntil || null,
     formula: form.formula,
     variables: form.variables
       .filter((variable) => variable.name.trim())
@@ -65,6 +77,14 @@ export default function EquipmentsPage() {
   const [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // 팀 탭 — 설비도 팀별로 따로 관리한다. (기존 설비는 생산2팀 소속)
+  const [selectedTeam, setSelectedTeam] = useState<string>("team2");
+
+  const teamEquipments = useMemo(
+    () => (data ? data.equipments.filter((equipment) => (equipment.team ?? "team2") === selectedTeam) : []),
+    [data, selectedTeam],
+  );
 
   if (loading) return <p className="py-12 text-center text-sm text-ink-muted">불러오는 중…</p>;
   if (error || !data)
@@ -102,6 +122,28 @@ export default function EquipmentsPage() {
         </p>
       ) : null}
 
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-sm text-ink-muted">팀</span>
+        {data.teams.map((team) => (
+          <button
+            key={team.id}
+            type="button"
+            onClick={() => {
+              setSelectedTeam(team.id);
+              setAdding(false);
+              setEditingId(null);
+            }}
+            className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+              selectedTeam === team.id
+                ? "bg-ink text-card font-medium"
+                : "border border-line text-ink-soft hover:text-ink"
+            }`}
+          >
+            {team.name}
+          </button>
+        ))}
+      </div>
+
       <Card
         title="계산식에 쓸 수 있는 값"
         description="아래 값들은 실적을 입력할 때 자동으로 채워집니다. 그 외 값(단가 등)은 설비마다 직접 등록합니다."
@@ -137,7 +179,8 @@ export default function EquipmentsPage() {
         >
           {adding ? (
             <EquipmentForm
-              initial={DEFAULT_FORM}
+              initial={defaultForm(selectedTeam)}
+              teams={data.teams}
               busy={busy}
               submitLabel="등록"
               onCancel={() => setAdding(false)}
@@ -155,15 +198,16 @@ export default function EquipmentsPage() {
       ) : null}
 
       <Card title="설비 목록" description="계산식을 수정해도 이미 저장된 실적의 회수액은 바뀌지 않습니다.">
-        {data.equipments.length === 0 ? (
+        {teamEquipments.length === 0 ? (
           <p className="py-8 text-center text-sm text-ink-muted">등록된 설비가 없습니다.</p>
         ) : (
           <ul className="space-y-4">
-            {data.equipments.map((equipment) => (
+            {teamEquipments.map((equipment) => (
               <li key={equipment.id} className="rounded-lg border border-line p-4">
                 {editingId === equipment.id ? (
                   <EquipmentForm
                     initial={toFormState(equipment)}
+                    teams={data.teams}
                     busy={busy}
                     submitLabel="저장"
                     onCancel={() => setEditingId(null)}
@@ -210,6 +254,14 @@ export default function EquipmentsPage() {
                         <dt className="text-ink-muted">시작 시점 누적 회수액</dt>
                         <dd className="text-ink-soft">{formatMoney(equipment.initialRecovered)}</dd>
                       </div>
+                      {equipment.initialRecoveredUntil ? (
+                        <div className="flex justify-between">
+                          <dt className="text-ink-muted">누적 회수액 기준일</dt>
+                          <dd className="text-ink-soft">
+                            {equipment.initialRecoveredUntil}까지 (그 다음 날부터 실적 자동 계산)
+                          </dd>
+                        </div>
+                      ) : null}
                     </dl>
 
                     <p className="text-sm">
@@ -240,13 +292,14 @@ export default function EquipmentsPage() {
 
 type FormProps = {
   initial: FormState;
+  teams: { id: string; name: string }[];
   busy: boolean;
   submitLabel: string;
   onSubmit: (form: FormState) => void;
   onCancel: () => void;
 };
 
-function EquipmentForm({ initial, busy, submitLabel, onSubmit, onCancel }: FormProps) {
+function EquipmentForm({ initial, teams, busy, submitLabel, onSubmit, onCancel }: FormProps) {
   const [form, setForm] = useState<FormState>(initial);
 
   // 계산식에 썼지만 아직 값을 등록하지 않은 변수를 찾아 알려준다.
@@ -267,7 +320,7 @@ function EquipmentForm({ initial, busy, submitLabel, onSubmit, onCancel }: FormP
       }}
       className="space-y-4"
     >
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="flex flex-col gap-1">
           <span className="text-xs text-ink-muted">설비 이름</span>
           <input
@@ -276,6 +329,21 @@ function EquipmentForm({ initial, busy, submitLabel, onSubmit, onCancel }: FormP
             placeholder="예: 자동 조립기 1호"
             className="rounded-md border border-line bg-card px-2 py-2 text-sm text-ink"
           />
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-ink-muted">소속 팀</span>
+          <select
+            value={form.team}
+            onChange={(event) => update({ team: event.target.value })}
+            className="rounded-md border border-line bg-card px-2 py-2 text-sm text-ink"
+          >
+            {teams.map((team) => (
+              <option key={team.id} value={team.id}>
+                {team.name}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label className="flex flex-col gap-1">
@@ -299,6 +367,19 @@ function EquipmentForm({ initial, busy, submitLabel, onSubmit, onCancel }: FormP
             onChange={(event) => update({ initialRecovered: event.target.value })}
             className="tabular rounded-md border border-line bg-card px-2 py-2 text-sm text-ink"
           />
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-ink-muted">누적 회수액 기준일 (선택)</span>
+          <DateField
+            value={form.initialRecoveredUntil}
+            onChange={(value) => update({ initialRecoveredUntil: value })}
+            className="tabular rounded-md border border-line bg-card px-2 py-2 text-sm text-ink"
+          />
+          <span className="text-xs text-ink-muted">
+            이 날짜까지는 위 누적 회수액으로 대신하고, 다음 날부터의 생산실적만 자동으로 계산해
+            더합니다. 비워두면 전체 실적을 계산합니다.
+          </span>
         </label>
       </div>
 

@@ -13,14 +13,16 @@ import { apiSend } from "@/lib/client";
 
 const MENUS = [
   { href: "/", label: "대시보드" },
-  { href: "/production", label: "생산실적" },
-  { href: "/processes", label: "공정·표준ST" },
-  { href: "/equipments", label: "자동화 설비" },
+  { href: "/production", label: "생산실적입력" },
+  { href: "/processes", label: "공정 설정" },
+  { href: "/equipments", label: "자동화 설비 설정" },
 ];
 
 export default function Header() {
   const pathname = usePathname();
   const [editor, setEditor] = useState(false);
+  // 관리자(편집 모드)가 아니면 대시보드만 보이게 한다.
+  const visibleMenus = editor ? MENUS : MENUS.filter((menu) => menu.href === "/");
   const [password, setPassword] = useState("");
   const [opened, setOpened] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,11 +55,11 @@ export default function Header() {
     <header className="border-b border-line bg-card">
       <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
         <Link href="/" className="text-base font-semibold text-ink">
-          AI 생산관리
+          생산기술1팀
         </Link>
 
         <nav className="flex flex-wrap gap-1">
-          {MENUS.map((menu) => {
+          {visibleMenus.map((menu) => {
             const active = pathname === menu.href;
             return (
               <Link
