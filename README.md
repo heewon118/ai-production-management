@@ -14,7 +14,7 @@
 ## 기술 스택
 
 - [Next.js](https://nextjs.org) (App Router) + TypeScript + Tailwind CSS
-- 데이터 저장: 파일 기반(`data/db.json`) — 아래 "알아두어야 할 점" 참고
+- 데이터 저장: [Supabase](https://supabase.com) Postgres (teams/processes/equipments/records 4개 테이블)
 - 배포: [Vercel](https://vercel.com)
 
 ## 로컬 실행
@@ -28,12 +28,15 @@ npm run dev
 
 ### 환경 변수
 
-`.env.example`을 참고해 `.env`를 만드세요. 편집(입력/수정) 비밀번호는 `EDIT_PASSWORD`로 설정합니다(설정하지 않으면 기본값 `1234`가 쓰이므로, 배포 시에는 반드시 별도로 설정해야 합니다).
+`.env.example`을 참고해 `.env`를 만드세요.
+- `EDIT_PASSWORD` — 편집(입력/수정) 비밀번호. 설정하지 않으면 기본값 `1234`가 쓰이므로, 배포 시에는 반드시 별도로 설정해야 합니다.
+- `NEXT_PUBLIC_SUPABASE_URL` / `SUPABASE_SECRET_KEY` — 데이터를 저장하는 Supabase 프로젝트 접속 정보. `SUPABASE_SECRET_KEY`는 RLS를 우회하는 서버 전용 키이므로 절대 브라우저 코드나 `NEXT_PUBLIC_` 변수로 두지 않습니다.
 
 ## 알아두어야 할 점
 
 - 이 앱은 로그인 없이 조회가 가능한 팀 내부 공유 도구입니다. 편집(입력/수정)만 비밀번호로 보호됩니다.
-- 데이터는 서버의 `data/db.json` 파일에 저장됩니다(간단한 파일 저장 방식). **Vercel 같은 서버리스 환경에서는 파일 시스템이 배포마다 초기화되고 쓰기가 되지 않을 수 있어, 실제 운영에는 별도의 데이터베이스(Supabase 등) 연동이 필요합니다.** 지금은 데모/내부 검토용으로 배포된 상태입니다.
+- 데이터는 Supabase Postgres에 저장됩니다. 편집 권한 검사는 앱 서버(`EDIT_PASSWORD`)가 직접 하며, 브라우저는 Supabase에 절대 직접 접속하지 않고 항상 우리 `/api/*` 라우트를 거칩니다. 모든 테이블은 RLS를 켜두고 익명 접근 권한을 회수해뒀습니다.
+- Supabase **무료 요금제**를 쓰는 경우, 7일 동안 접속이 없으면 프로젝트가 자동으로 일시정지됩니다. 오래 쓰지 않다가 접속했는데 데이터가 안 보이면 [Supabase 대시보드](https://supabase.com/dashboard)에서 프로젝트를 깨워주세요.
 - Microsoft 365(Azure AD) 계정 로그인 기능은 구현은 되어 있으나 회사 Azure 관리자 동의 대기로 잠시 꺼둔 상태입니다. 자세한 내용은 `CLAUDE.md`를 참고하세요.
 
 ## 문서

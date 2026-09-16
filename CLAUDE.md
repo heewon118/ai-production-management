@@ -34,17 +34,20 @@ src/app/           화면(페이지)과 API 라우트 (App Router 규칙을 따�
   equipments/        자동화 설비·계산식 관리
   login/             (지금은 안 씀) Microsoft 계정 로그인 화면 — 8번 참고
   auth/callback/     (지금은 안 씀) Microsoft 로그인 후 돌아오는 콜백 — 8번 참고
-  api/               Route Handler (data, auth, processes, equipments, records, export)
-src/components/    화면에서 공통으로 쓰는 컴포넌트 (Header, Card, YamazumiChart)
+  api/               Route Handler (data, teams, auth, processes, equipments, records, export)
+src/components/    화면에서 공통으로 쓰는 컴포넌트 (Header, Card, YamazumiChart, DateField)
 src/lib/           계산·저장 등 재사용 로직
   worktime.ts        휴게시간 차감 계산
   formula.ts         사용자 계산식 파서 (eval 사용 금지)
   roi.ts             회수액 계산 / 계산식 검증
   stats.ts           기간 평균·야마즈미·ROI 집계
-  storage.ts         data/db.json 읽기·쓰기
+  storage.ts         Supabase(teams/processes/equipments/records 테이블) 읽기·쓰기
+  supabaseAdmin.ts   서버 전용 Supabase 클라이언트 (secret key, RLS 우회) — 절대 클라이언트 코드에서 import 금지
   auth.ts            편집 비밀번호 확인 (isEditor)
-  supabase/          (지금은 안 씀) Supabase 클라이언트 — 8번 참고
-data/              앱이 저장하는 실제 데이터 (git에 올리지 않음)
+  supabase/          (지금은 안 씀) Microsoft 365 로그인용 Supabase 클라이언트 — 8번 참고 (supabaseAdmin.ts와는 다른 용도)
+data/              (지금은 참고용 백업만) 예전에 쓰던 파일 저장 방식의 흔적. 실제 데이터는 Supabase에 있다. git에 올리지 않음
+supabase/migrations/  Supabase 테이블 스키마(SQL)
+scripts/           1회성 스크립트 (예: migrate-to-supabase.mjs — 로컬 데이터를 Supabase로 이관)
 public/            이미지 등 정적 파일
 PRD.md             기획서 (기능/범위의 기준 문서)
 ```
@@ -67,14 +70,14 @@ PRD에서 정한 아래 규칙은 코드로 구현할 때 절대 놓치면 안 �
 - **ROI(효과금액) 계산식도 웹 화면에서 사용자가 직접 설정/수정**하는 값이다 — 코드에 계산식을 하드코딩하지 않는다. 계산식을 바꾸면, 화면(이력 표·대시보드)에 보여줄 때는 과거 실적도 항상 "지금" 계산식 기준으로 다시 계산한다 (저장된 스냅샷을 그대로 쓰지 않는다). 아직 데이터 입력이 덜 끝난 최근 기간은 기간 필터로 제외하고 볼 수 있어야 한다.
 - **자동화 설비는 여러 대** — 설비별로 ROI(투자비 회수)를 따로 누적 관리한다.
 - **입력값 검증:** 생산수량·시간·금액 등은 음수를 입력할 수 없도록 막는다.
-- **누적 데이터는 반드시 유지:** 새로고침·재접속해도 그동안 쌓인 누적 값(ROI, 실적 이력 등)이 사라지면 안 된다.
+- **누적 데이터는 반드시 유지:** 새로고침·재접속해도 그동안 쌓인 누적 값(ROI, 실적 이력 등)이 사라지면 안 된다. 데이터는 Supabase Postgres(teams/processes/equipments/records 테이블)에 저장한다 — 예전에는 `data/db.json` 파일에 저장했지만, Vercel 서버리스 환경은 파일시스템이 읽기 전용이라 편집이 저장되지 않는 문제가 있어 옮겼다. 편집 권한 검사는 여전히 앱 서버의 `EDIT_PASSWORD`(`requireEditor()`)가 담당하고, 브라우저는 Supabase에 직접 접속하지 않는다 — 모든 테이블에 RLS를 켜고 `anon`/`authenticated` 권한은 회수했으며, 서버는 `src/lib/supabaseAdmin.ts`의 secret key로만 접근한다.
 
 ## 5. 이번 범위에서 하지 않는 것 (비범위)
 
 아래 항목은 PRD 6번에서 "이번엔 만들지 않기"로 정한 것들이다. 요청받지 않는 한 먼저 만들지 않는다.
 
 - 회원가입/이메일 로그인 (지금은 편집 시 비밀번호 하나로만 보호, 조회는 누구나 가능. Microsoft 365 로그인은 구현은 끝났지만 회사 Azure 관리자 동의 대기 중이라 잠시 보류 — 8번 참고)
-- 복잡한 데이터베이스 구축 (누적 데이터 저장은 최소한의 파일 저장 수준으로만)
+- 복잡한 데이터베이스 구축·다중 테이블 연동 (Supabase의 teams/processes/equipments/records 4개 단순 테이블 수준을 넘어서는 스키마는 만들지 않는다. Vercel 배포 시 파일 시스템에 쓸 수 없어 Supabase로 옮긴 것이며, 자세한 내용은 4번 "누적 데이터는 반드시 유지" 참고)
 - 생산조건·근무시간 기반 타임테이블 시각화
 - 야마즈미 차트의 작업자/설비별 세분화
 - 이상 징후 자동 알림/예측 기능
