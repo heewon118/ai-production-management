@@ -521,6 +521,23 @@ export function getMonthRange(dateStr: string): { from: string; to: string } {
   return { from, to };
 }
 
+/** 기준 날짜에서 n주 앞/뒤로 옮긴 날짜를 구한다. (음수면 과거) 주간 비교에서 "저번 주"를 구할 때 쓴다. */
+export function shiftWeeks(dateStr: string, weeks: number): string {
+  return addDays(dateStr, weeks * 7);
+}
+
+/**
+ * 기준 날짜가 속한 달에서 n개월 앞/뒤로 옮긴 달의 1일 날짜를 구한다. (음수면 과거)
+ * 월간 비교에서 "저번 달"을 구할 때 쓴다. (getMonthRange는 일(day)은 보지 않으므로 1일로 통일한다)
+ */
+export function shiftMonths(dateStr: string, months: number): string {
+  const [year, month] = dateStr.split("-").map(Number);
+  const total = year * 12 + (month - 1) + months;
+  const newYear = Math.floor(total / 12);
+  const newMonth = (total % 12) + 1;
+  return `${newYear}-${String(newMonth).padStart(2, "0")}-01`;
+}
+
 /**
  * 공정 하나의 목표 달성 현황을 구한다.
  * 생산수량은 이 공정에 "직접" 입력된 실적만 센다 (하위 공정 제외).

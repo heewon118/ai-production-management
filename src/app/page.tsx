@@ -27,6 +27,8 @@ import {
   getMonthRange,
   getWeekRange,
   partTeamOf,
+  shiftMonths,
+  shiftWeeks,
   teamProcessIdsInOrder,
   todayLocal,
   yesterdayLocal,
@@ -167,6 +169,13 @@ export default function DashboardPage() {
   const [equipmentFromOverride, setEquipmentFromOverride] = useState<string | null>(null);
   const [equipmentToOverride, setEquipmentToOverride] = useState<string | null>(null);
 
+  /**
+   * 전체 누적 대신 주간/월간으로 볼 수도 있다. 이때는 "이번 기간"과 "저번 기간"을
+   * 함께 계산해서 얼마나 늘었는지(증감) 비교해서 보여준다. 기준 날짜는 이전/다음으로 옮겨볼 수 있다.
+   */
+  const [equipmentPeriodMode, setEquipmentPeriodMode] = useState<"all" | "week" | "month">("all");
+  const [equipmentPeriodDate, setEquipmentPeriodDate] = useState(todayLocal());
+
   // 선택한 팀 소속 실적만으로 "데이터가 실제 있는 첫 날짜"를 구한다.
   const teamRecordsForRange = useMemo(
     () => (data ? data.records.filter((record) => partTeamOf(record.processId, data.processes) === selectedTeam) : []),
@@ -211,14 +220,48 @@ export default function DashboardPage() {
       equipmentFrom || equipmentTo ? { from: equipmentFrom, to: equipmentTo } : undefined,
     );
 
+    // 주간/월간 모드면 "이번 기간"과 "저번 기간"을 함께 계산해서 증감을 비교할 수 있게 한다.
+    let equipmentCompare: {
+      currentRange: { from: string; to: string };
+      previousRange: { from: string; to: string };
+      current: typeof equipmentStats;
+      previous: typeof equipmentStats;
+    } | null = null;
+    if (equipmentPeriodMode !== "all") {
+      const currentRange =
+        equipmentPeriodMode === "week"
+          ? getWeekRange(equipmentPeriodDate)
+          : getMonthRange(equipmentPeriodDate);
+      const previousRange =
+        equipmentPeriodMode === "week"
+          ? getWeekRange(shiftWeeks(equipmentPeriodDate, -1))
+          : getMonthRange(shiftMonths(equipmentPeriodDate, -1));
+      equipmentCompare = {
+        currentRange,
+        previousRange,
+        current: calcEquipmentStats(teamRecords, teamEquipments, data.processes, currentRange),
+        previous: calcEquipmentStats(teamRecords, teamEquipments, data.processes, previousRange),
+      };
+    }
+
     // 야마즈미 차트·범례는 막대(그룹)마다 안에서만 순서대로 색을 새로 매긴다
     // (다른 막대·다른 파트에 공정이 아무리 많아도, 한 막대 안 구간끼리는 항상 색이 겹치지 않는다).
     const chartColorMap = buildYamazumiColorMap(yamazumi);
     // 공정별 비교표는 팀 전체를 한 표에 늘어놓으므로, 팀 안에서 순서대로 색을 배정한다.
     const tableColorMap = buildColorMap(teamProcessIdsInOrder(data.processes, selectedTeam));
 
-    return { periodRecords, processStats, yamazumi, equipmentStats, chartColorMap, tableColorMap };
-  }, [data, from, to, selectedPartId, selectedTeam, equipmentFrom, equipmentTo]);
+    return { periodRecords, processStats, yamazumi, equipmentStats, equipmentCompare, chartColorMap, tableColorMap };
+  }, [
+    data,
+    from,
+    to,
+    selectedPartId,
+    selectedTeam,
+    equipmentFrom,
+    equipmentTo,
+    equipmentPeriodMode,
+    equipmentPeriodDate,
+  ]);
 
   if (loading) {
     return <p className="py-12 text-center text-sm text-ink-muted">불러오는 중…</p>;
@@ -279,32 +322,90 @@ export default function DashboardPage() {
         title="자동화 설비 효과금액"
         action={
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <label className="text-ink-muted">실적 입력 시점</label>
-            <DateField
-              value={equipmentFrom}
-              onChange={setEquipmentFromOverride}
-              className="rounded-md border border-line bg-card px-2 py-1 text-ink"
-            />
-            <span className="text-ink-muted">~</span>
-            <DateField
-              value={equipmentTo}
-              onChange={setEquipmentToOverride}
-              className="rounded-md border border-line bg-card px-2 py-1 text-ink"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                setEquipmentFromOverride(null);
-                setEquipmentToOverride(null);
-              }}
-              className={`rounded-md px-2 py-1 transition-colors ${
-                equipmentFromOverride !== null || equipmentToOverride !== null
-                  ? "border border-line text-ink-soft hover:text-ink"
-                  : "bg-ink text-card font-medium"
-              }`}
-            >
-              전체기간
-            </button>
+            {(["all", "week", "month"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setEquipmentPeriodMode(mode)}
+                className={`rounded-md px-3 py-1.5 transition-colors ${
+                  equipmentPeriodMode === mode
+                    ? "bg-ink text-card font-medium"
+                    : "border border-line text-ink-soft hover:text-ink"
+                }`}
+              >
+                {mode === "all" ? "전체" : mode === "week" ? "주간" : "월간"}
+              </button>
+            ))}
+
+            <span className="text-ink-muted">|</span>
+
+            {equipmentPeriodMode === "all" ? (
+              <>
+                <label className="text-ink-muted">실적 입력 시점</label>
+                <DateField
+                  value={equipmentFrom}
+                  onChange={setEquipmentFromOverride}
+                  className="rounded-md border border-line bg-card px-2 py-1 text-ink"
+                />
+                <span className="text-ink-muted">~</span>
+                <DateField
+                  value={equipmentTo}
+                  onChange={setEquipmentToOverride}
+                  className="rounded-md border border-line bg-card px-2 py-1 text-ink"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEquipmentFromOverride(null);
+                    setEquipmentToOverride(null);
+                  }}
+                  className={`rounded-md px-2 py-1 transition-colors ${
+                    equipmentFromOverride !== null || equipmentToOverride !== null
+                      ? "border border-line text-ink-soft hover:text-ink"
+                      : "bg-ink text-card font-medium"
+                  }`}
+                >
+                  전체기간
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEquipmentPeriodDate((current) =>
+                      equipmentPeriodMode === "week" ? shiftWeeks(current, -1) : shiftMonths(current, -1),
+                    )
+                  }
+                  className="rounded-md border border-line px-2 py-1 text-ink-soft hover:text-ink"
+                >
+                  ◀ 이전{equipmentPeriodMode === "week" ? " 주" : " 달"}
+                </button>
+                <span className="tabular text-ink-soft">
+                  {view.equipmentCompare
+                    ? `${view.equipmentCompare.currentRange.from} ~ ${view.equipmentCompare.currentRange.to}`
+                    : ""}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEquipmentPeriodDate((current) =>
+                      equipmentPeriodMode === "week" ? shiftWeeks(current, 1) : shiftMonths(current, 1),
+                    )
+                  }
+                  className="rounded-md border border-line px-2 py-1 text-ink-soft hover:text-ink"
+                >
+                  다음{equipmentPeriodMode === "week" ? " 주" : " 달"} ▶
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEquipmentPeriodDate(todayLocal())}
+                  className="rounded-md border border-line px-2 py-1 text-ink-soft hover:text-ink"
+                >
+                  오늘
+                </button>
+              </>
+            )}
           </div>
         }
       >
@@ -315,7 +416,7 @@ export default function DashboardPage() {
               설비 등록하기
             </Link>
           </p>
-        ) : (
+        ) : equipmentPeriodMode === "all" ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {view.equipmentStats.map((stat) => (
               <div key={stat.equipment.id} className="rounded-lg border border-line p-4">
@@ -349,6 +450,62 @@ export default function DashboardPage() {
                 ) : null}
               </div>
             ))}
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {(view.equipmentCompare?.current ?? []).map((stat) => {
+              const previous = view.equipmentCompare?.previous.find(
+                (item) => item.equipment.id === stat.equipment.id,
+              );
+              const previousAdded = previous?.addedRecovered ?? 0;
+              const delta = stat.addedRecovered - previousAdded;
+              const deltaPercent = previousAdded !== 0 ? (delta / Math.abs(previousAdded)) * 100 : null;
+              const periodLabel = equipmentPeriodMode === "week" ? "주" : "달";
+
+              return (
+                <div key={stat.equipment.id} className="rounded-lg border border-line p-4">
+                  <h3 className="font-medium text-ink">{stat.equipment.name}</h3>
+
+                  <p className="tabular mt-2 text-2xl font-semibold text-good">
+                    {stat.addedRecovered >= 0 ? "+" : ""}
+                    {formatMoney(stat.addedRecovered)}
+                  </p>
+                  <p className="text-xs text-ink-muted">
+                    이번 {periodLabel} 효과금액 ({stat.recordCount}건)
+                  </p>
+
+                  <dl className="tabular mt-3 space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <dt className="text-ink-muted">저번 {periodLabel}</dt>
+                      <dd className="text-ink-soft">
+                        {previousAdded >= 0 ? "+" : ""}
+                        {formatMoney(previousAdded)} ({previous?.recordCount ?? 0}건)
+                      </dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-ink-muted">증감</dt>
+                      <dd
+                        className="font-medium"
+                        style={{ color: delta >= 0 ? "var(--status-good)" : "var(--status-critical)" }}
+                      >
+                        {delta >= 0 ? "+" : ""}
+                        {formatMoney(delta)}
+                        {deltaPercent !== null
+                          ? ` (${delta >= 0 ? "+" : ""}${deltaPercent.toFixed(1)}%)`
+                          : ""}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  {stat.pendingCount > 0 ? (
+                    <p className="mt-3 text-xs text-ink-muted">
+                      계산하지 못한 실적 {stat.pendingCount}건이 있습니다. (표준ST 미등록 또는 계산식
+                      오류)
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         )}
       </Card>
