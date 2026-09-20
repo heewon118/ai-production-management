@@ -122,6 +122,12 @@ export type ProductionRecord = {
   recoveredAmount: number | null;
   /** 회수액을 계산하지 못한 경우 그 이유 (표준ST 미등록 등) */
   recoveredNote: string | null;
+  /**
+   * true면 이 실적은 설비 효과금액 계산에는 그대로 반영하되, 공정의 실제ST 평균
+   * (표준ST 비교표·야마즈미 차트)에서는 뺀다. 자동화 설비의 생산수량만 기록하고 싶을 때 켠다
+   * (예: 시작~종료시간이 실제 작업 페이스를 대표하지 않는 경우).
+   */
+  excludedFromStats: boolean;
   createdAt: string;
 };
 

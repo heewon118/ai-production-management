@@ -127,6 +127,7 @@ type RecordRow = {
   production_minutes: number;
   recovered_amount: number | null;
   recovered_note: string | null;
+  excluded_from_stats: boolean;
   created_at: string;
 };
 
@@ -145,6 +146,7 @@ function recordFromRow(row: RecordRow): ProductionRecord {
     productionMinutes: row.production_minutes,
     recoveredAmount: row.recovered_amount,
     recoveredNote: row.recovered_note,
+    excludedFromStats: row.excluded_from_stats,
     createdAt: row.created_at,
   };
 }
@@ -164,6 +166,7 @@ function recordToRow(record: ProductionRecord): RecordRow {
     production_minutes: record.productionMinutes,
     recovered_amount: record.recoveredAmount,
     recovered_note: record.recoveredNote,
+    excluded_from_stats: record.excludedFromStats,
     created_at: record.createdAt,
   };
 }

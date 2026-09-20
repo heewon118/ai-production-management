@@ -156,6 +156,8 @@ export type ProcessStat = {
 /**
  * 공정별로 기간 평균 실제ST를 구하고 표준ST와 비교한다.
  * 실적이 있는 공정만 결과에 넣는다.
+ * excludedFromStats로 표시한 실적(예: 시간이 실제 작업 페이스를 대표하지 않는 자동화 설비
+ * 수량 기록)은 이 평균 계산에서 뺀다 — 설비 효과금액 계산에는 별도로 그대로 반영된다.
  */
 export function calcProcessStats(
   records: ProductionRecord[],
@@ -165,6 +167,7 @@ export function calcProcessStats(
   const grouped = new Map<string, ProductionRecord[]>();
 
   for (const record of records) {
+    if (record.excludedFromStats) continue;
     const list = grouped.get(record.processId) ?? [];
     list.push(record);
     grouped.set(record.processId, list);

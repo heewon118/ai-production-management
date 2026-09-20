@@ -33,6 +33,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       quantity?: unknown;
       worker?: unknown;
       assistType?: unknown;
+      excludedFromStats?: unknown;
     };
 
     const updated = await updateDb((db) => {
@@ -79,6 +80,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         const assistType: AssistType =
           body.assistType === "support" || body.assistType === "leave" ? body.assistType : null;
         record.assistType = assistType;
+      }
+
+      // 설비 효과금액에는 그대로 반영하되, 공정의 실제ST 평균 계산에서는 뺄지 여부.
+      if ("excludedFromStats" in body) {
+        record.excludedFromStats = body.excludedFromStats === true;
       }
 
       // 공정·수량·시간 중 하나라도 바뀌면 효과금액을 다시 계산해서 저장해둔다.

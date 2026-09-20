@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
     const worker = typeof body.worker === "string" && body.worker.trim() ? body.worker.trim() : null;
     const assistType: AssistType =
       body.assistType === "support" || body.assistType === "leave" ? body.assistType : null;
+    const excludedFromStats = body.excludedFromStats === true;
 
     // 점심·휴식·정비시간을 제외한 실제 생산시간(분)을 구한다.
     const { productionMinutes } = calcProductionMinutes(startTime, endTime);
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
         productionMinutes,
         recoveredAmount,
         recoveredNote,
+        excludedFromStats,
         createdAt: new Date().toISOString(),
       };
 

@@ -175,6 +175,11 @@ export default function ProductionPage() {
   const [quantity, setQuantity] = useState("25");
   const [worker, setWorker] = useState("");
   const [assistType, setAssistType] = useState<"" | "support" | "leave">("");
+  /**
+   * 켜면 이 실적은 설비 효과금액에는 그대로 반영하되, 공정의 실제ST 평균(야마즈미·표준ST
+   * 비교표)에서는 뺀다. 자동화 설비의 생산수량만 기록하고 싶을 때 쓴다.
+   */
+  const [excludedFromStats, setExcludedFromStats] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -388,10 +393,14 @@ export default function ProductionPage() {
         quantity,
         worker: worker || null,
         assistType: assistType || null,
+        excludedFromStats,
       }),
     );
     // 다음 입력을 위해 수량을 기본값으로 되돌린다. (파트·담당자·공정은 이어서 입력하기 편하게 유지)
-    if (succeeded) setQuantity("25");
+    if (succeeded) {
+      setQuantity("25");
+      setExcludedFromStats(false);
+    }
   }
 
   return (
@@ -629,10 +638,21 @@ export default function ProductionPage() {
 
                 {/* 자동화 설비는 공정에 연결된 것이 자동으로 적용된다 (따로 고르지 않는다) */}
                 {linkedEquipment ? (
-                  <p className="text-xs text-ink-muted lg:col-span-3">
-                    ⚙ 자동화 공정입니다 — 이 실적은 <strong>{linkedEquipment.name}</strong> 의 효과금액에
-                    자동으로 반영됩니다.
-                  </p>
+                  <div className="flex flex-col gap-2 lg:col-span-3">
+                    <p className="text-xs text-ink-muted">
+                      ⚙ 자동화 공정입니다 — 이 실적은 <strong>{linkedEquipment.name}</strong> 의 효과금액에
+                      자동으로 반영됩니다.
+                    </p>
+                    <label className="flex items-center gap-2 text-xs text-ink-muted">
+                      <input
+                        type="checkbox"
+                        checked={excludedFromStats}
+                        onChange={(event) => setExcludedFromStats(event.target.checked)}
+                      />
+                      이 실적은 표준ST 평균(야마즈미·비교표)에서 제외 — 시간이 실제 작업 페이스를
+                      대표하지 않을 때 (설비 효과금액에는 그대로 반영됩니다)
+                    </label>
+                  </div>
                 ) : null}
               </div>
 
@@ -817,6 +837,7 @@ type RecordPatch = {
   quantity?: string;
   worker?: string | null;
   assistType?: AssistType;
+  excludedFromStats?: boolean;
 };
 
 type RecordRowProps = {
@@ -860,6 +881,7 @@ function RecordRow({
   const [draftAssistType, setDraftAssistType] = useState<"" | "support" | "leave">(
     record.assistType ?? "",
   );
+  const [draftExcludedFromStats, setDraftExcludedFromStats] = useState(record.excludedFromStats);
 
   const processPath =
     processOptions.find((option) => option.id === record.processId)?.path ?? "(삭제된 공정)";
@@ -886,6 +908,7 @@ function RecordRow({
     setDraftQuantity(String(record.quantity));
     setDraftWorker(record.worker ?? "");
     setDraftAssistType(record.assistType ?? "");
+    setDraftExcludedFromStats(record.excludedFromStats);
     setEditing(true);
   }
 
@@ -898,6 +921,7 @@ function RecordRow({
       quantity: draftQuantity,
       worker: draftWorker || null,
       assistType: draftAssistType || null,
+      excludedFromStats: draftExcludedFromStats,
     });
     setEditing(false);
   }
@@ -947,6 +971,16 @@ function RecordRow({
           {draftPreview && Number(draftQuantity) > 0
             ? `${((draftPreview.productionMinutes * 60) / Number(draftQuantity)).toFixed(1)}초`
             : "-"}
+          {equipmentName ? (
+            <label className="mt-1 flex items-center justify-end gap-1 text-xs text-ink-muted">
+              <input
+                type="checkbox"
+                checked={draftExcludedFromStats}
+                onChange={(event) => setDraftExcludedFromStats(event.target.checked)}
+              />
+              ST 제외
+            </label>
+          ) : null}
         </td>
         <td className="py-2 pr-3">
           <div className="flex flex-col gap-1">
@@ -1012,6 +1046,14 @@ function RecordRow({
         {record.quantity > 0
           ? `${((record.productionMinutes * 60) / record.quantity).toFixed(1)}초`
           : "-"}
+        {record.excludedFromStats ? (
+          <span
+            className="ml-1 block text-xs text-ink-muted"
+            title="설비 효과금액에는 반영되지만, 공정의 실제ST 평균에서는 뺐습니다."
+          >
+            ST 제외
+          </span>
+        ) : null}
       </td>
       <td className="py-2 pr-3 text-ink-soft">
         {record.worker ?? "-"}
