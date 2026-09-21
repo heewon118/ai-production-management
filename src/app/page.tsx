@@ -68,6 +68,9 @@ export default function DashboardPage() {
   const [fromOverride, setFromOverride] = useState<string | null>(null);
   const [toOverride, setToOverride] = useState<string | null>(null);
   const [partId, setPartId] = useState("");
+  // 야마즈미 막대는 기본은 Assy(2단계) 총합계로 보여주고, 누르면 그 Assy의 단위공정(3단계)
+  // 내역으로 펼쳐 보여준다. 여기에 펼쳐놓은 Assy id를 담아둔다.
+  const [expandedAssyIds, setExpandedAssyIds] = useState<Set<string>>(new Set());
 
   // 팀 탭 — 팀마다 대시보드를 따로 본다. (기존 조립/검사/포장은 생산2팀 소속)
   const [selectedTeam, setSelectedTeam] = useState<string>("team2");
@@ -80,6 +83,26 @@ export default function DashboardPage() {
     setToOverride(null);
     setEquipmentFromOverride(null);
     setEquipmentToOverride(null);
+    setExpandedAssyIds(new Set());
+  }
+
+  /** 파트를 바꾸면 야마즈미 막대의 펼침 상태도 초기화한다. */
+  function selectPart(id: string) {
+    setPartId(id);
+    setExpandedAssyIds(new Set());
+  }
+
+  /** 야마즈미 막대를 누르면 그 Assy를 펼치거나 접는다. */
+  function toggleAssyExpanded(topProcessId: string) {
+    setExpandedAssyIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(topProcessId)) {
+        next.delete(topProcessId);
+      } else {
+        next.add(topProcessId);
+      }
+      return next;
+    });
   }
   /**
    * 여유율(%) — 표준ST는 실제로 걸리는 시간(리얼타임)이므로 여기에 여유를 더해 목표선으로 본다.
@@ -119,12 +142,11 @@ export default function DashboardPage() {
 
   /**
    * 목표 달성 현황
-   * 기본은 어제(일간) 기준으로 현재 파트의 2단계 공정들을 한눈에 보여준다.
-   * 주간/월간은 여러 공정을 한 화면에서 비교하기 어려워, 공정 하나를 골라서 본다.
+   * 일간/주간/월간 모두 현재 파트의 2단계 공정들을 한눈에 보여준다.
+   * (목표는 calcAchievement가 "일 목표 × 기간 일수"로 이미 기간에 맞춰 계산해준다)
    */
   const [achievementPeriod, setAchievementPeriod] = useState<"day" | "week" | "month">("day");
   const [achievementDate, setAchievementDate] = useState(DEFAULT_ACHIEVEMENT_DATE);
-  const [achievementProcessId, setAchievementProcessId] = useState("");
 
   // 현재 선택된 파트 아래 2단계 공정들 (목표 달성 현황·야마즈미 둘 다 같은 기준)
   const secondLevelProcesses = useMemo(
@@ -132,37 +154,20 @@ export default function DashboardPage() {
     [data, selectedPartId],
   );
 
-  const selectedAchievementProcessId =
-    achievementProcessId && secondLevelProcesses.some((process) => process.id === achievementProcessId)
-      ? achievementProcessId
-      : (secondLevelProcesses[0]?.id ?? "");
-
   const achievementRange = useMemo(() => {
     if (achievementPeriod === "week") return getWeekRange(achievementDate);
     if (achievementPeriod === "month") return getMonthRange(achievementDate);
     return { from: achievementDate, to: achievementDate };
   }, [achievementPeriod, achievementDate]);
 
-  // 일간: 2단계 공정 전부를 한 번에 본다.
-  const dailyAchievements = useMemo(() => {
-    if (!data || achievementPeriod !== "day") return [];
+  // 2단계 공정 전부를 한 번에 본다 (일간/주간/월간 공통).
+  const periodAchievements = useMemo(() => {
+    if (!data) return [];
     return secondLevelProcesses.map((process) => ({
       process,
       result: calcAchievement(data.records, process, achievementRange.from, achievementRange.to),
     }));
-  }, [data, achievementPeriod, secondLevelProcesses, achievementRange]);
-
-  // 주간·월간: 고른 공정 하나만 본다.
-  const singleAchievement: { process: (typeof secondLevelProcesses)[number]; result: AchievementResult } | null =
-    useMemo(() => {
-      if (!data || achievementPeriod === "day" || !selectedAchievementProcessId) return null;
-      const process = secondLevelProcesses.find((item) => item.id === selectedAchievementProcessId);
-      if (!process) return null;
-      return {
-        process,
-        result: calcAchievement(data.records, process, achievementRange.from, achievementRange.to),
-      };
-    }, [data, achievementPeriod, secondLevelProcesses, selectedAchievementProcessId, achievementRange]);
+  }, [data, secondLevelProcesses, achievementRange]);
 
   // 자동화 설비 효과금액 기간 필터. "전체기간"을 누르면 이 팀의 데이터가 실제 있는
   // 첫 날짜 ~ 오늘로 되돌아간다(그 범위 안에 모든 실적이 들어있으므로 전체 누적과 같다).
@@ -244,13 +249,10 @@ export default function DashboardPage() {
       };
     }
 
-    // 야마즈미 차트·범례는 막대(그룹)마다 안에서만 순서대로 색을 새로 매긴다
-    // (다른 막대·다른 파트에 공정이 아무리 많아도, 한 막대 안 구간끼리는 항상 색이 겹치지 않는다).
-    const chartColorMap = buildYamazumiColorMap(yamazumi);
     // 공정별 비교표는 팀 전체를 한 표에 늘어놓으므로, 팀 안에서 순서대로 색을 배정한다.
     const tableColorMap = buildColorMap(teamProcessIdsInOrder(data.processes, selectedTeam));
 
-    return { periodRecords, processStats, yamazumi, equipmentStats, equipmentCompare, chartColorMap, tableColorMap };
+    return { periodRecords, processStats, yamazumi, equipmentStats, equipmentCompare, tableColorMap };
   }, [
     data,
     from,
@@ -262,6 +264,39 @@ export default function DashboardPage() {
     equipmentPeriodMode,
     equipmentPeriodDate,
   ]);
+
+  /**
+   * 야마즈미 막대는 기본으로 Assy(2단계)별 총합계 하나만 보여준다. expandedAssyIds에 있는
+   * Assy만 단위공정(3단계) 내역으로 펼친다. 색은 "지금 실제로 보이는" 구간 기준으로 다시 매겨서,
+   * 펼치고 접어도 항상 서로 겹치지 않게 한다.
+   */
+  const displayYamazumi = useMemo(() => {
+    if (!view) return [];
+    return view.yamazumi.map((group) => {
+      const hasBreakdown = group.segments.some((segment) => segment.processId !== group.topProcessId);
+      if (!hasBreakdown || expandedAssyIds.has(group.topProcessId)) return group;
+      // 접힌 기본 상태는 공정 자신의 실적(ownTotal)을 우선 보여준다. 자신에게 직접 찍힌
+      // 실적이 없으면(단위공정 실적만 있으면) 그 합계(total)를 대신 보여준다.
+      const collapsedValue = group.ownTotal ?? group.total;
+      return {
+        ...group,
+        segments: [{ processId: group.topProcessId, name: group.topProcessName, value: collapsedValue }],
+        total: collapsedValue,
+      };
+    });
+  }, [view, expandedAssyIds]);
+
+  /** 눌러서 펼쳐볼 단위공정 내역이 실제로 있는 Assy id만 모은다. */
+  const expandableAssyIds = useMemo(() => {
+    if (!view) return new Set<string>();
+    return new Set(
+      view.yamazumi
+        .filter((group) => group.segments.some((segment) => segment.processId !== group.topProcessId))
+        .map((group) => group.topProcessId),
+    );
+  }, [view]);
+
+  const chartColorMap = useMemo(() => buildYamazumiColorMap(displayYamazumi), [displayYamazumi]);
 
   if (loading) {
     return <p className="py-12 text-center text-sm text-ink-muted">불러오는 중…</p>;
@@ -542,9 +577,9 @@ export default function DashboardPage() {
             <p className="py-8 text-center text-sm text-ink-muted">
               이 파트에 2단계 공정이 없습니다. 공정 설정 화면에서 만들어주세요.
             </p>
-          ) : achievementPeriod === "day" ? (
+          ) : (
             <div className="grid gap-3 sm:grid-cols-2">
-              {dailyAchievements.map(({ process, result }) => {
+              {periodAchievements.map(({ process, result }) => {
                 const style = STATUS_STYLE[result.status];
                 return (
                   <div key={process.id} className={`rounded-lg border p-3 ${style.box}`}>
@@ -558,6 +593,7 @@ export default function DashboardPage() {
                     </p>
                     <p className={`mt-1 text-xs font-medium ${style.text}`}>
                       {achievementLabel(result)}
+                      {achievementPeriod !== "day" ? ` · ${result.days}일 기준` : ""}
                     </p>
                     {result.leaveQuantity > 0 || result.nightQuantity > 0 || result.supportQuantity > 0 ? (
                       <p className="tabular mt-1 text-xs text-ink-muted">
@@ -572,52 +608,6 @@ export default function DashboardPage() {
                   </div>
                 );
               })}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <select
-                value={selectedAchievementProcessId}
-                onChange={(event) => setAchievementProcessId(event.target.value)}
-                className="rounded-md border border-line bg-card px-2 py-2 text-sm text-ink"
-              >
-                {secondLevelProcesses.map((process) => (
-                  <option key={process.id} value={process.id}>
-                    {process.name}
-                  </option>
-                ))}
-              </select>
-
-              {singleAchievement ? (
-                (() => {
-                  const style = STATUS_STYLE[singleAchievement.result.status];
-                  const result = singleAchievement.result;
-                  return (
-                    <div className={`rounded-lg border p-4 ${style.box}`}>
-                      <p className="text-sm font-medium text-ink">{singleAchievement.process.name}</p>
-                      <p className={`tabular mt-1 text-2xl font-semibold ${style.text}`}>
-                        {formatNumber(result.totalQuantity)}
-                        <span className="text-base font-normal text-ink-muted">
-                          {" "}
-                          / {result.target === null ? "-" : formatNumber(result.target)}개
-                        </span>
-                      </p>
-                      <p className={`mt-1 text-sm font-medium ${style.text}`}>
-                        {achievementLabel(result)}
-                      </p>
-                      <p className="tabular mt-2 text-xs text-ink-muted">
-                        정상 {formatNumber(result.normalQuantity)} · 연차대응{" "}
-                        {formatNumber(result.leaveQuantity)} · 지원 {formatNumber(result.supportQuantity)} ·
-                        야간 {formatNumber(result.nightQuantity)} · {result.days}일 기준
-                        {result.target !== null
-                          ? ` (일 목표 ${formatNumber(result.target / result.days)}개 × ${result.days}일)`
-                          : ""}
-                      </p>
-                    </div>
-                  );
-                })()
-              ) : (
-                <p className="text-sm text-ink-muted">공정을 선택해주세요.</p>
-              )}
             </div>
           )}
         </Card>
@@ -679,7 +669,7 @@ export default function DashboardPage() {
                   <button
                     key={part.id}
                     type="button"
-                    onClick={() => setPartId(part.id)}
+                    onClick={() => selectPart(part.id)}
                     className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
                       active
                         ? "bg-ink text-card font-medium"
@@ -694,17 +684,24 @@ export default function DashboardPage() {
           ) : null}
 
           <YamazumiChart
-            groups={view.yamazumi}
-            colorOf={(processId) => colorFrom(view.chartColorMap, processId)}
+            groups={displayYamazumi}
+            colorOf={(processId) => colorFrom(chartColorMap, processId)}
             bufferPercent={buffer}
+            onToggleGroup={toggleAssyExpanded}
+            expandableIds={expandableAssyIds}
           />
+          {expandableAssyIds.size > 0 ? (
+            <p className="mt-2 text-xs text-ink-muted">
+              막대를 누르면 단위공정 내역으로 펼쳐 볼 수 있습니다. (▸ 총합계 · ▾ 단위공정 내역)
+            </p>
+          ) : null}
 
           {/* 범례: 색만으로 구분되지 않도록 이름을 함께 보여준다 */}
-          {view.yamazumi.length > 0 ? (
+          {displayYamazumi.length > 0 ? (
             <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-line pt-4">
               {[
                 ...new Map(
-                  view.yamazumi
+                  displayYamazumi
                     .flatMap((group) => group.segments)
                     .map((segment) => [segment.processId, segment]),
                 ).values(),
@@ -712,7 +709,7 @@ export default function DashboardPage() {
                 <span key={segment.processId} className="flex items-center gap-2 text-xs text-ink-soft">
                   <span
                     className="inline-block h-3 w-3 rounded-sm"
-                    style={{ backgroundColor: colorFrom(view.chartColorMap, segment.processId) }}
+                    style={{ backgroundColor: colorFrom(chartColorMap, segment.processId) }}
                   />
                   {segment.name}
                 </span>

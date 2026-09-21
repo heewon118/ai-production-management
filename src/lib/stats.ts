@@ -221,6 +221,12 @@ export type YamazumiGroup = {
   segments: YamazumiSegment[];
   /** 막대 전체 높이 (세그먼트 합계, 초) */
   total: number;
+  /**
+   * 이 공정 자신에게 직접 찍힌 실적의 실제ST(초). 없으면 null.
+   * 기본(접힌) 막대는 단위공정 내역(segments/total)보다 이 값을 우선해서 보여준다 —
+   * 단위공정 실적은 눌렀을 때만 별도로 펼쳐 본다.
+   */
+  ownTotal: number | null;
   /** 목표선 = 같은 공정들의 표준ST 합계(초). 하나도 등록 안 됐으면 null */
   target: number | null;
 };
@@ -245,6 +251,7 @@ export function buildYamazumiData(
       topProcessName: top.name,
       segments: [],
       total: 0,
+      ownTotal: null,
       target: null,
     };
 
@@ -312,9 +319,10 @@ export function effectiveStandardST(processId: string, processes: Process[]): nu
 /**
  * 파트(1단계)를 하나 골라, 그 아래 2단계 공정을 가로축으로 하는 야마즈미 데이터를 만든다.
  *
- * 막대는 3단계 공정들의 평균 실제ST를 쌓아 올리고, 그 합계가 2단계 공정의 실제ST가 된다.
- * (하위 공정 실적은 수량 집계가 아니라 ST 평균 데이터로 쓰인다)
- * 3단계 실적이 아직 없으면 2단계 공정 자신에게 입력된 실적을 쓴다.
+ * segments/total은 단위공정(3단계)별 실제ST를 쌓은 내역이다(단위공정 실적이 없으면 2단계
+ * 공정 자신의 실적을 그대로 쓴다). ownTotal은 2단계 공정 자신에게 직접 찍힌 실적로,
+ * 단위공정 유무와 상관없이 항상 따로 계산해둔다 — 화면에서는 기본으로 ownTotal을 보여주고,
+ * 누르면 segments(단위공정 내역)로 펼쳐 보여준다.
  */
 export function buildYamazumiByPart(
   stats: ProcessStat[],
@@ -325,35 +333,31 @@ export function buildYamazumiByPart(
 
   return secondLevel
     .map((process) => {
-      // 3단계 공정들의 평균 실제ST를 쌓는다.
       const children = processes.filter((item) => item.parentId === process.id);
-      const childSegments: YamazumiSegment[] = [];
 
-      for (const child of children) {
-        const stat = stats.find((item) => item.process.id === child.id && item.actualST !== null);
-        if (stat) {
-          childSegments.push({
-            processId: child.id,
-            name: child.name,
-            value: stat.actualST as number,
-          });
-        }
-      }
+      const ownStat = stats.find((item) => item.process.id === process.id && item.actualST !== null);
+      const childStats = children
+        .map((child) => stats.find((item) => item.process.id === child.id && item.actualST !== null))
+        .filter((item): item is ProcessStat => item !== undefined);
 
-      // 3단계 실적이 하나도 없으면 2단계 공정 자신의 실적을 쓴다.
-      let segments = childSegments;
-      if (segments.length === 0) {
-        const own = stats.find((stat) => stat.process.id === process.id && stat.actualST !== null);
-        segments = own
-          ? [{ processId: process.id, name: process.name, value: own.actualST as number }]
-          : [];
-      }
+      // 단위공정 실적이 있으면 그걸로 쌓고, 없으면 2단계 공정 자신의 실적을 그대로 쓴다.
+      const segments: YamazumiSegment[] =
+        childStats.length > 0
+          ? childStats.map((stat) => ({
+              processId: stat.process.id,
+              name: stat.process.name,
+              value: stat.actualST as number,
+            }))
+          : ownStat
+            ? [{ processId: process.id, name: process.name, value: ownStat.actualST as number }]
+            : [];
 
       return {
         topProcessId: process.id,
         topProcessName: process.name,
         segments,
         total: segments.reduce((sum, segment) => sum + segment.value, 0),
+        ownTotal: ownStat?.actualST ?? null,
         target: effectiveStandardST(process.id, processes),
       } satisfies YamazumiGroup;
     })

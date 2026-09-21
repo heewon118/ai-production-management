@@ -19,6 +19,10 @@ type Props = {
    * 여기에 여유율을 더한 값을 목표선으로 함께 보여준다. (버퍼)
    */
   bufferPercent: number;
+  /** 막대를 누르면 그 공정(topProcessId)을 펼치기/접기 한다. 없으면 클릭 기능이 꺼진다. */
+  onToggleGroup?: (topProcessId: string) => void;
+  /** 눌러서 펼쳐볼 단위공정 내역이 있는 공정 id 목록. 여기 없는 공정은 눌러도 반응하지 않는다. */
+  expandableIds?: Set<string>;
 };
 
 /** 세로축 최대값을 보기 좋은 숫자로 올림한다. */
@@ -64,7 +68,13 @@ const PLOT_HEIGHT = 240;
 /** 쌓인 막대 사이에 두는 틈 (배경색이 비쳐 경계가 보이도록) */
 const SEGMENT_GAP = 2;
 
-export default function YamazumiChart({ groups, colorOf, bufferPercent }: Props) {
+export default function YamazumiChart({
+  groups,
+  colorOf,
+  bufferPercent,
+  onToggleGroup,
+  expandableIds,
+}: Props) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<HoverInfo | null>(null);
 
@@ -145,12 +155,17 @@ export default function YamazumiChart({ groups, colorOf, bufferPercent }: Props)
         {groups.map((group, groupIndex) => {
           const slotX = PAD_LEFT + groupIndex * SLOT_WIDTH;
           const barX = slotX + (SLOT_WIDTH - BAR_WIDTH) / 2;
+          const expandable = expandableIds?.has(group.topProcessId) ?? false;
 
           // 아래에서부터 위로 쌓아 올린다.
           let cursor = 0;
 
           return (
-            <g key={group.topProcessId}>
+            <g
+              key={group.topProcessId}
+              onClick={expandable ? () => onToggleGroup?.(group.topProcessId) : undefined}
+              style={expandable ? { cursor: "pointer" } : undefined}
+            >
               {group.segments.map((segment, segmentIndex) => {
                 const bottom = toY(cursor);
                 cursor += segment.value;
@@ -277,7 +292,7 @@ export default function YamazumiChart({ groups, colorOf, bufferPercent }: Props)
                 </text>
               ) : null}
 
-              {/* 막대 아래 공정 이름 + 여유율 대비 결과 */}
+              {/* 막대 아래 공정 이름 + 여유율 대비 결과. 눌러서 펼쳐볼 수 있는 공정은 화살표로 표시한다 */}
               <text
                 x={slotX + SLOT_WIDTH / 2}
                 y={baseline + 18}
@@ -286,6 +301,11 @@ export default function YamazumiChart({ groups, colorOf, bufferPercent }: Props)
                 fill="var(--text-primary)"
               >
                 {group.topProcessName}
+                {expandable
+                  ? group.segments.some((segment) => segment.processId !== group.topProcessId)
+                    ? " ▾"
+                    : " ▸"
+                  : ""}
               </text>
               {group.target !== null && group.total > 0 ? (
                 <text
